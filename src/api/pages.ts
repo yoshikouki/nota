@@ -40,8 +40,21 @@ export async function fetchPage(pageId: string): Promise<NotaPage> {
 
 export async function searchPages(query?: string): Promise<NotaPage[]> {
   const client = getClient();
-  const res = await withRetry(() =>
-    client.search({ query, filter: { value: "page", property: "object" } })
-  );
-  return (res.results as PageObjectResponse[]).map(toNotaPage);
+  const pages: NotaPage[] = [];
+  let nextCursor: string | undefined;
+
+  do {
+    const res = await withRetry(() =>
+      client.search({
+        query,
+        filter: { value: "page", property: "object" },
+        start_cursor: nextCursor,
+      })
+    );
+
+    pages.push(...(res.results as PageObjectResponse[]).map(toNotaPage));
+    nextCursor = res.has_more ? (res.next_cursor ?? undefined) : undefined;
+  } while (nextCursor);
+
+  return pages;
 }
