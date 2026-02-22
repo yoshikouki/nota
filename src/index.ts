@@ -4,6 +4,7 @@ import { Command } from "commander";
 import { registerListCommand } from "./commands/list";
 import { registerShowCommand } from "./commands/show";
 import { registerTreeCommand } from "./commands/tree";
+import { registerCacheCommand } from "./commands/cache";
 
 const program = new Command();
 
@@ -15,6 +16,7 @@ program
 registerListCommand(program);
 registerShowCommand(program);
 registerTreeCommand(program);
+registerCacheCommand(program);
 
 program.parseAsync().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);

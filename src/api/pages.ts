@@ -31,16 +31,28 @@ export function toNotaPage(page: PageObjectResponse): NotaPage {
 }
 
 export async function fetchPage(pageId: string): Promise<NotaPage> {
+  const raw = await fetchPageRaw(pageId);
+  return toNotaPage(raw);
+}
+
+export async function fetchPageRaw(pageId: string): Promise<PageObjectResponse> {
   const client = getClient();
   const res = await withRetry(() =>
     client.pages.retrieve({ page_id: pageId })
   );
-  return toNotaPage(res as PageObjectResponse);
+  return res as PageObjectResponse;
 }
 
 export async function searchPages(query?: string): Promise<NotaPage[]> {
+  const raw = await searchPagesRaw(query);
+  return raw.map(toNotaPage);
+}
+
+export async function searchPagesRaw(
+  query?: string
+): Promise<PageObjectResponse[]> {
   const client = getClient();
-  const pages: NotaPage[] = [];
+  const pages: PageObjectResponse[] = [];
   let nextCursor: string | undefined;
 
   do {
@@ -52,7 +64,7 @@ export async function searchPages(query?: string): Promise<NotaPage[]> {
       })
     );
 
-    pages.push(...(res.results as PageObjectResponse[]).map(toNotaPage));
+    pages.push(...(res.results as PageObjectResponse[]));
     nextCursor = res.has_more ? (res.next_cursor ?? undefined) : undefined;
   } while (nextCursor);
 

@@ -1,11 +1,18 @@
 import { Command } from "commander";
-import { fetchPage, searchPages } from "../api/pages";
+import { fetchPage, searchPagesRaw, toNotaPage } from "../api/pages";
 import type { NotaPage } from "../types";
 import { renderTree, type TreeNode } from "../render/tree";
+import {
+  getCachedPages,
+  loadCache,
+  saveCache,
+  setCachedPages,
+} from "../cache/store";
 
 const DEFAULT_DEPTH = 3;
 
 interface TreeOptions {
+  cache?: boolean;
   root?: string;
   depth: number;
 }
@@ -150,11 +157,21 @@ export function registerTreeCommand(program: Command): void {
   program
     .command("tree")
     .description("Render page hierarchy as a tree")
+    .option("--cache", "Use cache when available")
     .option("--root <page-id>", "Root page ID")
     .option("--depth <n>", "Tree depth (default: 3)", parseDepth, DEFAULT_DEPTH)
     .action(async (options: TreeOptions) => {
       try {
-        const pages = await searchPages();
+        const store = loadCache();
+        let rawPages = options.cache ? getCachedPages(store) : null;
+
+        if (!rawPages) {
+          rawPages = await searchPagesRaw();
+          setCachedPages(store, rawPages);
+          saveCache(store);
+        }
+
+        const pages = rawPages.map(toNotaPage);
         const depth = options.depth ?? DEFAULT_DEPTH;
 
         if (options.root) {
