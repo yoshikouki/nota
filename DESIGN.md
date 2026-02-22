@@ -77,6 +77,18 @@ nota cache status
 
 ## キャッシュ設計
 
+### 方針：SDK レスポンスをキャッシュする（アプリケーション境界でのスナップショット）
+
+キャッシュは **Notion SDK の生レスポンス（変換前）** を保存する。`NotaPage` や Markdown に変換した後の値ではない。
+
+**理由：**
+- `NotaPage` の型定義が変わっても、キャッシュは無効にならない（raw から再変換できる）
+- Markdown レンダリングロジックが変わっても raw ブロックから再生成できる
+- 将来フィールドを追加しても、キャッシュ済みの raw データからすでに取れる
+- キャッシュが「API のスナップショット」として一貫した意味を持つ
+
+変換（`PageObjectResponse → NotaPage`）は **常に読み出し時に行う**。
+
 ### 保存場所（XDG 準拠）
 
 ```
@@ -88,31 +100,26 @@ $XDG_CACHE_HOME/nota/   （デフォルト: ~/.cache/nota/）
 
 ```jsonc
 {
-  "version": 1,
+  "version": 2,
   "pages": {
     "<page_id>": {
-      "id": "string",
-      "title": "string",
-      "parent": {
-        "type": "page_id | database_id | workspace",
-        "id": "string | null"
-      },
-      "url": "string",
-      "created_time": "ISO8601",
-      "last_edited_time": "ISO8601",
+      "raw": { /* PageObjectResponse をそのまま */ },
       "cached_at": "ISO8601",
-      "ttl_seconds": 300,
-      "markdown": "string | null",
-      "children": ["page_id", "..."]
+      "ttl_seconds": 300
     }
   },
-  "databases": {
-    "<database_id>": {
-      "id": "string",
-      "title": "string",
+  "blocks": {
+    "<page_id>": {
+      "raw": [ /* BlockObjectResponse[] をそのまま（全ページ分、再帰展開済み） */ ],
       "cached_at": "ISO8601",
-      "ttl_seconds": 300,
-      "page_ids": ["page_id", "..."]
+      "ttl_seconds": 300
+    }
+  },
+  "searches": {
+    "<query_string>": {
+      "raw": [ /* PageObjectResponse[] */ ],
+      "cached_at": "ISO8601",
+      "ttl_seconds": 60
     }
   }
 }
@@ -123,6 +130,7 @@ $XDG_CACHE_HOME/nota/   （デフォルト: ~/.cache/nota/）
 - `cached_at + ttl_seconds < now` → stale 判定
 - コマンド実行時、stale なら**バックグラウンドで再取得** → キャッシュ更新
 - `--cache` フラグなしでも、フレッシュキャッシュがあれば返す（速度優先）
+- search キャッシュの TTL は短め（60秒）：新規ページが検索に反映されるまでの遅延を抑える
 
 ---
 

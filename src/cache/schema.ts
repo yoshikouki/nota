@@ -1,40 +1,37 @@
-export interface CachedPage {
-  id: string;
-  title: string;
-  parent: {
-    type: "page_id" | "database_id" | "workspace";
-    id: string | null;
-  };
-  url: string;
-  created_time: string;
-  last_edited_time: string;
-  cached_at: string;
-  ttl_seconds: number;
-  markdown: string | null;
-  children: string[];
-}
+import type {
+  PageObjectResponse,
+  BlockObjectResponse,
+} from "@notionhq/client/build/src/api-endpoints";
 
-export interface CachedDatabase {
-  id: string;
-  title: string;
-  cached_at: string;
+/** Generic cache entry wrapping a raw SDK response */
+export interface CacheEntry<T> {
+  raw: T;
+  cached_at: string; // ISO8601
   ttl_seconds: number;
-  page_ids: string[];
 }
 
 export interface CacheStore {
-  version: 1;
-  pages: Record<string, CachedPage>;
-  databases: Record<string, CachedDatabase>;
+  version: 2;
+  /** Key: page_id → raw PageObjectResponse */
+  pages: Record<string, CacheEntry<PageObjectResponse>>;
+  /** Key: page_id → raw BlockObjectResponse[] (recursively flattened) */
+  blocks: Record<string, CacheEntry<BlockObjectResponse[]>>;
+  /** Key: query string (or "" for no-query list) → raw PageObjectResponse[] */
+  searches: Record<string, CacheEntry<PageObjectResponse[]>>;
 }
 
-export const DEFAULT_TTL = 300; // 5 minutes
+export const DEFAULT_TTL = 300;        // 5 minutes for pages/blocks
+export const SEARCH_TTL = 60;          // 1 minute for search results
 
 export function emptyStore(): CacheStore {
-  return { version: 1, pages: {}, databases: {} };
+  return { version: 2, pages: {}, blocks: {}, searches: {} };
 }
 
-export function isStale(cachedAt: string, ttlSeconds: number): boolean {
-  const age = (Date.now() - new Date(cachedAt).getTime()) / 1000;
-  return age > ttlSeconds;
+export function isStale(entry: CacheEntry<unknown>): boolean {
+  const age = (Date.now() - new Date(entry.cached_at).getTime()) / 1000;
+  return age > entry.ttl_seconds;
+}
+
+export function makeEntry<T>(raw: T, ttl = DEFAULT_TTL): CacheEntry<T> {
+  return { raw, cached_at: new Date().toISOString(), ttl_seconds: ttl };
 }
