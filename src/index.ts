@@ -8,6 +8,7 @@ import { registerEditCommand } from "./commands/edit";
 import { registerDeleteCommand } from "./commands/delete";
 import { registerCacheCommand } from "./commands/cache";
 import { registerConfigCommand } from "./commands/config";
+import { registerStatsCommand } from "./commands/stats";
 
 const program = new Command();
 
@@ -21,6 +22,7 @@ registerShowCommand(program);
 registerTreeCommand(program);
 registerEditCommand(program);
 registerDeleteCommand(program);
+registerStatsCommand(program);
 registerCacheCommand(program);
 registerConfigCommand(program);
 
