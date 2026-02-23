@@ -118,8 +118,8 @@ export function registerStatsCommand(program: Command): void {
       const notaPages = cachedPages.map(toNotaPage);
 
       // Date range — display in local timezone
-      const toLocalDate = (d: Date) =>
-        d.toLocaleDateString("sv-SE", { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+      // sv-SE locale → YYYY-MM-DD format in system local timezone
+      const toLocalDate = (d: Date) => d.toLocaleDateString("sv-SE");
       const dates = notaPages.map((p) => p.lastEditedAt).sort((a, b) => a.getTime() - b.getTime());
       const oldest = dates[0] ? toLocalDate(dates[0]) : "—";
       const newest = dates[dates.length - 1] ? toLocalDate(dates[dates.length - 1]!) : "—";

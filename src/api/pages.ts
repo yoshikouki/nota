@@ -26,6 +26,14 @@ export function toNotaPage(page: PageObjectResponse): NotaPage {
   } else if (page.parent.type === "database_id") {
     parentId = page.parent.database_id;
     parentType = "database";
+  } else if (
+    // "data_source_id" is a newer Notion API type for connected/synced databases.
+    // The parent object contains both data_source_id and database_id.
+    page.parent.type === ("data_source_id" as string)
+  ) {
+    const p = page.parent as unknown as { database_id?: string; data_source_id: string };
+    parentId = p.database_id ?? p.data_source_id;
+    parentType = "database";
   }
 
   return {
