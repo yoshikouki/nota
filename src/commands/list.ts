@@ -5,11 +5,11 @@ import {
   type SortOrder,
 } from "../api/pages";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import { revalidateSearchInBackground } from "../cache/background";
 import {
-  getCachedPages,
-  loadCache,
-  saveCache,
-  setCachedPages,
+  getCachedSearch,
+  setCachedPage,
+  setCachedSearch,
 } from "../cache/store";
 import { loadConfig } from "../utils/config-file";
 
@@ -19,16 +19,6 @@ interface ListOptions {
   database?: string;
   cache?: boolean;
   json?: boolean;
-}
-
-function getListCacheKey(
-  query: string | undefined,
-  sort: SortOrder,
-  database: string | undefined
-): string {
-  const normalizedQuery = query ?? "";
-  const normalizedDatabase = database ?? "";
-  return `q=${normalizedQuery}|sort=${sort}|db=${normalizedDatabase}`;
 }
 
 function filterByDatabase(
@@ -70,30 +60,33 @@ export function registerListCommand(program: Command): void {
             ? options.database
             : (options.database ?? config.list?.database);
 
-        const cacheSource = command.getOptionValueSource("cache");
         const allowStale =
-          options.cache === true ||
-          (cacheSource !== "cli" && config.cache?.enabled === true);
+          options.cache === true || config.cache?.enabled === true;
 
-        const cacheKey = getListCacheKey(options.search, sort, databaseId);
+        const cachedPages = getCachedSearch(options.search, sort, allowStale);
+        const wasStale =
+          allowStale &&
+          cachedPages !== null &&
+          getCachedSearch(options.search, sort, false) === null;
 
-        const store = loadCache();
-        let rawPages = allowStale ? getCachedPages(store, cacheKey, true) : null;
-
+        let rawPages = cachedPages;
         if (!rawPages) {
           rawPages = await searchPagesRaw(options.search, sort);
-          if (databaseId) {
-            rawPages = filterByDatabase(rawPages, databaseId);
+          setCachedSearch(options.search, sort, rawPages);
+          for (const page of rawPages) {
+            setCachedPage(page);
           }
-
-          setCachedPages(store, rawPages, cacheKey);
-          saveCache(store);
+        } else if (wasStale) {
+          revalidateSearchInBackground(options.search, sort);
         }
 
-        const pages = rawPages.map(toNotaPage);
+        const outputPages = databaseId
+          ? filterByDatabase(rawPages, databaseId)
+          : rawPages;
+        const pages = outputPages.map(toNotaPage);
 
         if (options.json) {
-          console.log(JSON.stringify(rawPages, null, 2));
+          console.log(JSON.stringify(outputPages, null, 2));
           return;
         }
 

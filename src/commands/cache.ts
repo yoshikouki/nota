@@ -1,32 +1,27 @@
 import { Command } from "commander";
-import { createInterface } from "readline/promises";
-import { existsSync, statSync } from "fs";
-import { getCachePath } from "../utils/xdg";
-import {
-  clearCache,
-  invalidatePage,
-  loadCache,
-  saveCache,
-} from "../cache/store";
+import { readdirSync, statSync } from "fs";
+import { join } from "path";
+import { clearAllCache, invalidatePage } from "../cache/store";
+import { getBlocksDir, getCacheDir, getPagesDir, getSearchesDir } from "../utils/xdg";
 
 interface ClearOptions {
-  force?: boolean;
+  all?: boolean;
   page?: string;
 }
 
-async function confirmClearAll(): Promise<boolean> {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+function countFilesAndSize(dir: string): { count: number; size: number } {
+  let count = 0;
+  let size = 0;
 
-  try {
-    const answer = await rl.question("Clear all cache? [y/N] ");
-    const normalized = answer.trim().toLowerCase();
-    return normalized === "y" || normalized === "yes";
-  } finally {
-    rl.close();
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isFile()) {
+      continue;
+    }
+    count += 1;
+    size += statSync(join(dir, entry.name)).size;
   }
+
+  return { count, size };
 }
 
 export function registerCacheCommand(program: Command): void {
@@ -37,15 +32,20 @@ export function registerCacheCommand(program: Command): void {
     .description("Show cache status")
     .action(() => {
       try {
-        const cachePath = getCachePath();
-        const store = loadCache();
-        const fileSize = existsSync(cachePath) ? statSync(cachePath).size : 0;
+        const pagesDir = getPagesDir();
+        const blocksDir = getBlocksDir();
+        const searchesDir = getSearchesDir();
 
-        console.log(`Cache path: ${cachePath}`);
-        console.log(`Page count: ${Object.keys(store.pages).length}`);
-        console.log(`Block count: ${Object.keys(store.blocks).length}`);
-        console.log(`Search count: ${Object.keys(store.searches).length}`);
-        console.log(`File size: ${fileSize} bytes`);
+        const pages = countFilesAndSize(pagesDir);
+        const blocks = countFilesAndSize(blocksDir);
+        const searches = countFilesAndSize(searchesDir);
+        const totalSize = pages.size + blocks.size + searches.size;
+
+        console.log(`Cache dir: ${getCacheDir()}`);
+        console.log(`Pages: ${pages.count}`);
+        console.log(`Blocks: ${blocks.count}`);
+        console.log(`Searches: ${searches.count}`);
+        console.log(`Total size: ${totalSize} bytes`);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(`Error: ${message}`);
@@ -56,25 +56,21 @@ export function registerCacheCommand(program: Command): void {
   cacheCommand
     .command("clear")
     .description("Clear cache entries")
+    .option("--all", "Clear all cache files")
     .option("--page <id>", "Clear cache for a page and its blocks")
-    .option("--force", "Skip confirmation prompt")
-    .action(async (options: ClearOptions) => {
+    .action((options: ClearOptions) => {
       try {
+        if (options.all && options.page) {
+          console.error("Error: --all and --page cannot be used together");
+          process.exit(1);
+        }
+
         if (options.page) {
-          const store = loadCache();
-          invalidatePage(store, options.page);
-          saveCache(store);
+          invalidatePage(options.page);
           return;
         }
 
-        if (!options.force) {
-          const confirmed = await confirmClearAll();
-          if (!confirmed) {
-            return;
-          }
-        }
-
-        clearCache();
+        clearAllCache();
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(`Error: ${message}`);

@@ -1,6 +1,5 @@
 import type {
   PageObjectResponse,
-  BlockObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 
 /** Generic cache entry wrapping a raw SDK response */
@@ -10,22 +9,13 @@ export interface CacheEntry<T> {
   ttl_seconds: number;
 }
 
-export interface CacheStore {
-  version: 2;
-  /** Key: page_id → raw PageObjectResponse */
-  pages: Record<string, CacheEntry<PageObjectResponse>>;
-  /** Key: page_id → raw BlockObjectResponse[] (recursively flattened) */
-  blocks: Record<string, CacheEntry<BlockObjectResponse[]>>;
-  /** Key: query string (or "" for no-query list) → raw PageObjectResponse[] */
-  searches: Record<string, CacheEntry<PageObjectResponse[]>>;
+export interface SearchCacheEntry extends CacheEntry<PageObjectResponse[]> {
+  query: string | undefined;
+  sort: string;
 }
 
 export const DEFAULT_TTL = 300;        // 5 minutes for pages/blocks
 export const SEARCH_TTL = 60;          // 1 minute for search results
-
-export function emptyStore(): CacheStore {
-  return { version: 2, pages: {}, blocks: {}, searches: {} };
-}
 
 export function isStale(entry: CacheEntry<unknown>): boolean {
   const timestamp = new Date(entry.cached_at).getTime();

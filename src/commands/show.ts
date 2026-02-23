@@ -10,8 +10,6 @@ import { fetchPageRaw } from "../api/pages";
 import {
   getCachedBlocks,
   getCachedPage,
-  loadCache,
-  saveCache,
   setCachedBlocks,
   setCachedPage,
 } from "../cache/store";
@@ -164,11 +162,8 @@ export function registerShowCommand(program: Command): void {
           options.cache === true ||
           (cacheSource !== "cli" && config.cache?.enabled === true);
 
-        const store = loadCache();
-        const cachedPage = allowStale ? getCachedPage(store, pageId, true) : null;
-        let flattenedBlocks = allowStale
-          ? getCachedBlocks(store, pageId, true)
-          : null;
+        const cachedPage = getCachedPage(pageId, allowStale);
+        let flattenedBlocks = getCachedBlocks(pageId, allowStale);
 
         if (!cachedPage || !flattenedBlocks) {
           const page = await fetchPageRaw(pageId);
@@ -177,9 +172,8 @@ export function registerShowCommand(program: Command): void {
           const rootBlocks = await fetchAllBlocks(apiClient, pageId, blockChildrenMap);
           flattenedBlocks = flattenBlocks(rootBlocks, blockChildrenMap);
 
-          setCachedPage(store, page);
-          setCachedBlocks(store, pageId, flattenedBlocks);
-          saveCache(store);
+          setCachedPage(page);
+          setCachedBlocks(pageId, flattenedBlocks);
         }
 
         const { rootBlocks, blockChildrenMap } = hydrateBlocks(

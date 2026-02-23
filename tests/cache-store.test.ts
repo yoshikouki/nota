@@ -1,23 +1,57 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import type {
   BlockObjectResponse,
   PageObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-import { emptyStore, makeEntry } from "../src/cache/schema";
 import {
+  clearAllCache,
   getCachedBlocks,
   getCachedPage,
-  getCachedPages,
+  getCachedSearch,
   invalidatePage,
-  loadCache,
+  setCachedBlocks,
+  setCachedPage,
+  setCachedSearch,
 } from "../src/cache/store";
-import { getCachePath } from "../src/utils/xdg";
+import { getBlocksDir, getPagesDir, getSearchesDir } from "../src/utils/xdg";
 
 const ORIGINAL_XDG_CACHE_HOME = process.env.XDG_CACHE_HOME;
 let testCacheHome = "";
+
+function staleFile(filePath: string): void {
+  const entry = JSON.parse(readFileSync(filePath, "utf-8")) as {
+    cached_at: string;
+  };
+  entry.cached_at = new Date(0).toISOString();
+  writeFileSync(filePath, JSON.stringify(entry), "utf-8");
+}
+
+function makePage(
+  id: string,
+  lastEditedTime: string = "2026-02-23T00:00:00.000Z"
+): PageObjectResponse {
+  return {
+    object: "page",
+    id,
+    created_time: "2026-02-22T00:00:00.000Z",
+    last_edited_time: lastEditedTime,
+    archived: false,
+    in_trash: false,
+    url: `https://www.notion.so/${id}`,
+    parent: { type: "workspace", workspace: true },
+    properties: {},
+  } as unknown as PageObjectResponse;
+}
 
 beforeEach(() => {
   testCacheHome = mkdtempSync(join(tmpdir(), "nota-test-"));
@@ -33,91 +67,86 @@ afterEach(() => {
   rmSync(testCacheHome, { recursive: true, force: true });
 });
 
-describe("loadCache", () => {
-  test("JSON が壊れている場合は .bak に退避して空ストアを返す", () => {
-    const cachePath = getCachePath();
-    writeFileSync(cachePath, "{broken-json", "utf-8");
-
-    const messages: string[] = [];
-    const originalError = console.error;
-    console.error = (...args: unknown[]) => {
-      messages.push(args.join(" "));
-    };
-
-    try {
-      const store = loadCache();
-      expect(store).toEqual(emptyStore());
-      expect(existsSync(`${cachePath}.bak`)).toBe(true);
-      expect(messages).toContain(
-        "nota: cache corrupted, resetting (backed up to cache.json.bak)"
-      );
-    } finally {
-      console.error = originalError;
-    }
-  });
-});
-
 describe("stale cache handling", () => {
   test("allowStale=true なら stale な search キャッシュを返す", () => {
-    const store = emptyStore();
-    const rawPages = [{ id: "page-1" }] as unknown as PageObjectResponse[];
-    store.searches.query = {
-      raw: rawPages,
-      cached_at: new Date(0).toISOString(),
-      ttl_seconds: 1,
-    };
+    const pages = [makePage("page-1")];
+    setCachedSearch("query", "edited", pages, 1);
 
-    expect(getCachedPages(store, "query")).toBeNull();
-    expect(getCachedPages(store, "query", true)).toBe(rawPages);
+    const searchFile = readdirSync(getSearchesDir())[0];
+    if (!searchFile) {
+      throw new Error("search cache file not found");
+    }
+    staleFile(join(getSearchesDir(), searchFile));
+
+    expect(getCachedSearch("query", "edited")).toBeNull();
+    expect(getCachedSearch("query", "edited", true)).toEqual(pages);
   });
 
   test("allowStale=true なら stale な page キャッシュを返す", () => {
-    const store = emptyStore();
-    const rawPage = { id: "page-1" } as unknown as PageObjectResponse;
-    store.pages["page-1"] = {
-      raw: rawPage,
-      cached_at: new Date(0).toISOString(),
-      ttl_seconds: 1,
-    };
+    const page = makePage("page-1");
+    setCachedPage(page, 1);
 
-    expect(getCachedPage(store, "page-1")).toBeNull();
-    expect(getCachedPage(store, "page-1", true)).toBe(rawPage);
+    staleFile(join(getPagesDir(), "page-1.json"));
+
+    expect(getCachedPage("page-1")).toBeNull();
+    expect(getCachedPage("page-1", true)).toEqual(page);
   });
 
   test("allowStale=true なら stale な block キャッシュを返す", () => {
-    const store = emptyStore();
-    const rawBlocks = [{ id: "block-1" }] as unknown as BlockObjectResponse[];
-    store.blocks["page-1"] = {
-      raw: rawBlocks,
-      cached_at: new Date(0).toISOString(),
-      ttl_seconds: 1,
-    };
+    const blocks = [{
+      object: "block",
+      id: "block-1",
+      type: "paragraph",
+      has_children: false,
+      archived: false,
+      in_trash: false,
+      parent: { type: "page_id", page_id: "page-1" },
+    }] as unknown as BlockObjectResponse[];
 
-    expect(getCachedBlocks(store, "page-1")).toBeNull();
-    expect(getCachedBlocks(store, "page-1", true)).toBe(rawBlocks);
+    setCachedBlocks("page-1", blocks, 1);
+    staleFile(join(getBlocksDir(), "page-1.json"));
+
+    expect(getCachedBlocks("page-1")).toBeNull();
+    expect(getCachedBlocks("page-1", true)).toEqual(blocks);
   });
 });
 
-describe("invalidatePage", () => {
-  test("page と block を削除し、search キャッシュも全消去する", () => {
-    const store = emptyStore();
-    store.pages["page-1"] = makeEntry(
-      { id: "page-1" } as unknown as PageObjectResponse
-    );
-    store.blocks["page-1"] = makeEntry(
-      [{ id: "block-1" }] as unknown as BlockObjectResponse[]
-    );
-    store.searches[""] = makeEntry(
-      [{ id: "page-1" }] as unknown as PageObjectResponse[]
-    );
-    store.searches.query = makeEntry(
-      [{ id: "page-2" }] as unknown as PageObjectResponse[]
-    );
+describe("cache file handling", () => {
+  test("壊れた JSON を読んだ場合は null を返す", () => {
+    const filePath = join(getPagesDir(), "page-1.json");
+    writeFileSync(filePath, "{broken-json", "utf-8");
 
-    invalidatePage(store, "page-1");
+    expect(getCachedPage("page-1")).toBeNull();
+  });
 
-    expect(store.pages["page-1"]).toBeUndefined();
-    expect(store.blocks["page-1"]).toBeUndefined();
-    expect(store.searches).toEqual({});
+  test("invalidatePage は pages と blocks のファイルを削除する", () => {
+    setCachedPage(makePage("page-1"));
+    setCachedBlocks("page-1", []);
+
+    const pagePath = join(getPagesDir(), "page-1.json");
+    const blockPath = join(getBlocksDir(), "page-1.json");
+
+    expect(existsSync(pagePath)).toBe(true);
+    expect(existsSync(blockPath)).toBe(true);
+
+    invalidatePage("page-1");
+
+    expect(existsSync(pagePath)).toBe(false);
+    expect(existsSync(blockPath)).toBe(false);
+  });
+
+  test("clearAllCache は全ディレクトリを作り直す", () => {
+    setCachedPage(makePage("page-1"));
+    setCachedBlocks("page-1", []);
+    setCachedSearch(undefined, "none", [makePage("page-1")]);
+
+    clearAllCache();
+
+    expect(existsSync(getPagesDir())).toBe(true);
+    expect(existsSync(getBlocksDir())).toBe(true);
+    expect(existsSync(getSearchesDir())).toBe(true);
+    expect(readdirSync(getPagesDir())).toHaveLength(0);
+    expect(readdirSync(getBlocksDir())).toHaveLength(0);
+    expect(readdirSync(getSearchesDir())).toHaveLength(0);
   });
 });

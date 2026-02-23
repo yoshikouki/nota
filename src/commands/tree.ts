@@ -3,10 +3,9 @@ import { fetchPage, searchPagesRaw, toNotaPage } from "../api/pages";
 import type { NotaPage } from "../types";
 import { renderTree, type TreeNode } from "../render/tree";
 import {
-  getCachedPages,
-  loadCache,
-  saveCache,
-  setCachedPages,
+  getCachedSearch,
+  setCachedPage,
+  setCachedSearch,
 } from "../cache/store";
 import { loadConfig } from "../utils/config-file";
 
@@ -169,15 +168,14 @@ export function registerTreeCommand(program: Command): void {
           options.cache === true ||
           (cacheSource !== "cli" && config.cache?.enabled === true);
 
-        const store = loadCache();
-        let rawPages = allowStale
-          ? getCachedPages(store, undefined, true)
-          : null;
+        let rawPages = getCachedSearch(undefined, "none", allowStale);
 
         if (!rawPages) {
           rawPages = await searchPagesRaw();
-          setCachedPages(store, rawPages);
-          saveCache(store);
+          setCachedSearch(undefined, "none", rawPages);
+          for (const page of rawPages) {
+            setCachedPage(page);
+          }
         }
 
         const pages = rawPages.map(toNotaPage);
