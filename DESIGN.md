@@ -89,48 +89,78 @@ nota cache status
 
 変換（`PageObjectResponse → NotaPage`）は **常に読み出し時に行う**。
 
-### 保存場所（XDG 準拠）
+### 保存場所：リクエスト単位のディレクトリ構造
 
 ```
-$XDG_CACHE_HOME/nota/   （デフォルト: ~/.cache/nota/）
-  cache.json            # メインキャッシュストア
+$XDG_CACHE_HOME/nota/          （デフォルト: ~/.cache/nota/）
+  pages/
+    <page_id>.json             # pages.retrieve() の結果
+  blocks/
+    <page_id>.json             # blocks.children.list() の結果（再帰展開済み）
+  searches/
+    <hash>.json                # search(query, sort) の結果
 ```
 
-### JSON スキーマ
+**グローバル1ファイルではなくリクエスト単位でファイルを分割する理由：**
+- 並列書き込みの race condition がなくなる（異なるページは異なるファイル）
+- 無効化がシンプル — `rm pages/<id>.json` で1ページ消える
+- ファイルが小さく atomic rename が確実
+- `last_edited_time` 差分チェックと組み合わせた細粒度な無効化が容易
+
+### JSON スキーマ（ファイル単位）
 
 ```jsonc
+// pages/<page_id>.json
 {
-  "version": 2,
-  "pages": {
-    "<page_id>": {
-      "raw": { /* PageObjectResponse をそのまま */ },
-      "cached_at": "ISO8601",
-      "ttl_seconds": 300
-    }
-  },
-  "blocks": {
-    "<page_id>": {
-      "raw": [ /* BlockObjectResponse[] をそのまま（全ページ分、再帰展開済み） */ ],
-      "cached_at": "ISO8601",
-      "ttl_seconds": 300
-    }
-  },
-  "searches": {
-    "<query_string>": {
-      "raw": [ /* PageObjectResponse[] */ ],
-      "cached_at": "ISO8601",
-      "ttl_seconds": 60
-    }
-  }
+  "raw": { /* PageObjectResponse をそのまま */ },
+  "cached_at": "ISO8601",
+  "ttl_seconds": 300
+}
+
+// blocks/<page_id>.json
+{
+  "raw": [ /* BlockObjectResponse[] 再帰展開済み */ ],
+  "cached_at": "ISO8601",
+  "ttl_seconds": 300
+}
+
+// searches/<hash>.json
+{
+  "raw": [ /* PageObjectResponse[] */ ],
+  "query": "string | undefined",
+  "sort": "edited | none",
+  "cached_at": "ISO8601",
+  "ttl_seconds": 60
 }
 ```
 
-### 自動更新（stale-while-revalidate パターン）
+hash = `base64url(JSON.stringify({query, sort})).slice(0, 32)`
 
-- `cached_at + ttl_seconds < now` → stale 判定
-- コマンド実行時、stale なら**バックグラウンドで再取得** → キャッシュ更新
-- `--cache` フラグなしでも、フレッシュキャッシュがあれば返す（速度優先）
-- search キャッシュの TTL は短め（60秒）：新規ページが検索に反映されるまでの遅延を抑える
+### stale-while-revalidate + last_edited_time 差分チェック
+
+**通常実行（`--cache` なし）：**
+1. fresh キャッシュがあればそのまま返す（API 呼ばない）
+2. stale または miss → API 取得 → キャッシュ更新
+
+**`cache.enabled: true` / `--cache` 時（オフライン優先）：**
+1. stale でもキャッシュを即返す（fast path）
+2. stale だった場合、**バックグラウンドで非同期リフレッシュ**を起動（fire-and-forget）
+3. バックグラウンド処理：
+   - `search()` を実行して最新の `last_edited_time` を取得
+   - 各ページのキャッシュ済み `last_edited_time` と比較
+   - **変更があったページだけ** `pages/<id>.json` / `blocks/<id>.json` を削除（= 次回 fetch 時に再取得）
+   - `searches/<hash>.json` を更新
+4. 次回の `nota show <id>` で自動的に最新を取得
+
+**「削除することで無効化する」**が設計の核心。ファイルがなければ miss → API fetch → 保存。
+
+### TTL
+
+| エントリ | デフォルト TTL |
+|---------|--------------|
+| pages   | 300秒（5分）  |
+| blocks  | 300秒（5分）  |
+| searches| 60秒（1分）   |
 
 ## Config File
 
