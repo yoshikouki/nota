@@ -1,4 +1,5 @@
 import {
+  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -135,9 +136,34 @@ export function setCachedPage(
   writeCacheFile(pagePath(page.id), makeEntry(page, ttl));
 }
 
+/** Remove a page from all search cache files (scrubs ghost entries). */
+function scrubPageFromSearchCaches(pageId: string): void {
+  const dir = getSearchesDir();
+  let files: string[];
+  try {
+    files = readdirSync(dir).filter((f) => f.endsWith(".json"));
+  } catch {
+    return; // dir doesn't exist yet
+  }
+
+  for (const file of files) {
+    const filePath = join(dir, file);
+    const entry = readSearchEntry(filePath);
+    if (!entry) continue;
+
+    const before = entry.raw.length;
+    const filtered = entry.raw.filter((p) => p.id !== pageId);
+    if (filtered.length === before) continue; // page wasn't in this cache
+
+    // Rewrite the cache file with the page removed
+    writeCacheFile(filePath, { ...entry, raw: filtered });
+  }
+}
+
 export function invalidatePage(pageId: string): void {
   deleteFile(pagePath(pageId));
   deleteFile(blockPath(pageId));
+  scrubPageFromSearchCaches(pageId);
 }
 
 export function getCachedBlocks(
