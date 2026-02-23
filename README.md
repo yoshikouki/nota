@@ -22,8 +22,12 @@ nota show <page-id> [--cache] [--raw]
 nota tree [--root <page-id>] [--depth <n>] [--cache]
 nota edit <page-id> [--title <new-title>] [--editor]
 nota delete <page-id> [--force]
+nota stats [--no-api]
 nota cache status
 nota cache clear [--force] [--page <id>]
+nota config show
+nota config set <key> <value>
+nota config unset <key>
 ```
 
 ---
@@ -41,7 +45,7 @@ bun install
 ln -s $(pwd)/src/index.ts ~/.local/bin/nota
 ```
 
-Brew formula and pre-built binary coming after Write features ship.
+Brew formula and pre-built binary coming soon.
 
 ---
 
@@ -73,6 +77,17 @@ nota edit abc123def456 --editor
 # Archive (soft-delete) a page
 nota delete abc123def456
 nota delete abc123def456 --force  # skip confirmation
+
+# API status, cache breakdown, and page analytics
+nota stats
+nota stats --no-api  # skip connectivity check
+
+# Manage config
+nota config show
+nota config set cache.enabled true
+nota config set list.sort edited
+nota config set list.database <database-id>
+nota config unset list.database
 ```
 
 ---
