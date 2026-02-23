@@ -1,0 +1,126 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+          bun build --compile --target=bun-linux-arm64   src/index.ts --outfile dist/nota-linux-arm64
+          bun build --compile --target=bun-linux-x64     src/index.ts --outfile dist/nota-linux-x64
+          bun build --compile --target=bun-darwin-arm64  src/index.ts --outfile dist/nota-darwin-arm64
+          bun build --compile --target=bun-darwin-x64    src/index.ts --outfile dist/nota-darwin-x64
+
+      - name: Package (tar.gz per binary)
+        run: |
+          cd dist
+          for f in nota-linux-arm64 nota-linux-x64 nota-darwin-arm64 nota-darwin-x64; do
+            cp "$f" nota
+            tar czf "${f}.tar.gz" nota
+            rm nota
+          done
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          cd dist
+          sha256sum *.tar.gz | tee sha256sums.txt
+          # export individual shas for formula update
+          echo "sha_darwin_arm64=$(sha256sum nota-darwin-arm64.tar.gz | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "sha_darwin_x64=$(sha256sum nota-darwin-x64.tar.gz | awk '{print $1}')"     >> "$GITHUB_OUTPUT"
+          echo "sha_linux_arm64=$(sha256sum nota-linux-arm64.tar.gz | awk '{print $1}')"   >> "$GITHUB_OUTPUT"
+          echo "sha_linux_x64=$(sha256sum nota-linux-x64.tar.gz | awk '{print $1}')"       >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/sha256sums.txt
+          generate_release_notes: true
+
+      - name: Update homebrew-tap formula
+        env:
+          VERSION: ${{ github.ref_name }}
+          SHA_DARWIN_ARM64: ${{ steps.sha.outputs.sha_darwin_arm64 }}
+          SHA_DARWIN_X64:   ${{ steps.sha.outputs.sha_darwin_x64 }}
+          SHA_LINUX_ARM64:  ${{ steps.sha.outputs.sha_linux_arm64 }}
+          SHA_LINUX_X64:    ${{ steps.sha.outputs.sha_linux_x64 }}
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+        run: |
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/yoshikouki/homebrew-tap.git" tap
+          cd tap
+
+          cat > Formula/nota.rb << FORMULA
+          class Nota < Formula
+            desc "Notion CLI — read, write, and cache your Notion pages"
+            homepage "https://github.com/yoshikouki/nota"
+            version "${VERSION#v}"
+            license "MIT"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/yoshikouki/nota/releases/download/${VERSION}/nota-darwin-arm64.tar.gz"
+                sha256 "${SHA_DARWIN_ARM64}"
+              end
+              on_intel do
+                url "https://github.com/yoshikouki/nota/releases/download/${VERSION}/nota-darwin-x64.tar.gz"
+                sha256 "${SHA_DARWIN_X64}"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "https://github.com/yoshikouki/nota/releases/download/${VERSION}/nota-linux-arm64.tar.gz"
+                sha256 "${SHA_LINUX_ARM64}"
+              end
+              on_intel do
+                url "https://github.com/yoshikouki/nota/releases/download/${VERSION}/nota-linux-x64.tar.gz"
+                sha256 "${SHA_LINUX_X64}"
+              end
+            end
+
+            def install
+              bin.install "nota"
+            end
+
+            def caveats
+              <<~EOS
+                nota requires a Notion API token:
+                  export NOTION_TOKEN="secret_..."
+
+                Get a token at: https://www.notion.so/my-integrations
+              EOS
+            end
+
+            test do
+              assert_match version.to_s, shell_output("\#{bin}/nota --version")
+            end
+          end
+          FORMULA
+
+          git add Formula/nota.rb
+          git commit -m "nota: update to ${VERSION}"
+          git push
