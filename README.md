@@ -20,11 +20,11 @@ The typical pattern for using Notion data in scripts is: sync pages to git → r
 nota list [--search <query>] [--sort edited|created|none] [--json] [--cache]
 nota show <page-id> [--cache] [--raw]
 nota tree [--root <page-id>] [--depth <n>] [--cache]
+nota edit <page-id> [--title <new-title>] [--editor]
+nota delete <page-id> [--force]
 nota cache status
 nota cache clear [--force] [--page <id>]
 ```
-
-Write commands (`edit`, `delete`) are in progress.
 
 ---
 
@@ -63,6 +63,16 @@ nota tree --root abc123def456 --depth 3
 # Cache makes repeated reads ~15× faster
 nota list --cache
 nota show abc123def456 --cache
+
+# Update a page title
+nota edit abc123def456 --title "New title"
+
+# Edit page content in $EDITOR (opens current content as Markdown)
+nota edit abc123def456 --editor
+
+# Archive (soft-delete) a page
+nota delete abc123def456
+nota delete abc123def456 --force  # skip confirmation
 ```
 
 ---
@@ -101,8 +111,8 @@ TTL: 5 minutes for pages/blocks, 1 minute for searches. Pass `--cache` to serve 
 ## Status
 
 **Read features:** done  
-**Write features:** in progress (`nota edit`, `nota delete`)  
-**Brew distribution:** after Write features ship
+**Write features:** done (`nota edit --title`, `nota edit --editor`, `nota delete`)  
+**Brew distribution:** next (`bun build --compile` → single binary → brew formula)
 
 ---
 
