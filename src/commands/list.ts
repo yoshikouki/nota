@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { searchPagesRaw, toNotaPage } from "../api/pages";
+import { searchPagesRaw, toNotaPage, type SortOrder } from "../api/pages";
 import {
   getCachedPages,
   loadCache,
@@ -9,6 +9,7 @@ import {
 
 interface ListOptions {
   search?: string;
+  sort?: string;
   cache?: boolean;
   json?: boolean;
 }
@@ -18,17 +19,23 @@ export function registerListCommand(program: Command): void {
     .command("list")
     .description("List Notion pages")
     .option("--search <query>", "Search pages by query")
+    .option("--sort <order>", "Sort order: edited (default), created, none", "edited")
     .option("--cache", "Use cache when available")
     .option("--json", "Output raw JSON")
     .action(async (options: ListOptions) => {
       try {
+        const sort = (options.sort ?? "edited") as SortOrder;
+        // Cache key includes sort to avoid mixing sorted/unsorted results
+        const cacheKey = options.search
+          ? `${options.search}:${sort}`
+          : `:${sort}`;
+
         const store = loadCache();
-        let rawPages =
-          options.cache ? getCachedPages(store, options.search) : null;
+        let rawPages = options.cache ? getCachedPages(store, cacheKey) : null;
 
         if (!rawPages) {
-          rawPages = await searchPagesRaw(options.search);
-          setCachedPages(store, rawPages, options.search);
+          rawPages = await searchPagesRaw(options.search, sort);
+          setCachedPages(store, rawPages, cacheKey);
           saveCache(store);
         }
 
@@ -40,7 +47,8 @@ export function registerListCommand(program: Command): void {
         }
 
         for (const page of pages) {
-          console.log(`  ${page.id}  ${page.title}`);
+          const edited = page.lastEditedAt.toLocaleDateString("ja-JP");
+          console.log(`  ${edited}  ${page.id}  ${page.title}`);
         }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);

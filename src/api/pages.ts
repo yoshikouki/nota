@@ -43,23 +43,30 @@ export async function fetchPageRaw(pageId: string): Promise<PageObjectResponse> 
   return res as PageObjectResponse;
 }
 
-export async function searchPages(query?: string): Promise<NotaPage[]> {
-  const raw = await searchPagesRaw(query);
-  return raw.map(toNotaPage);
-}
+export type SortOrder = "edited" | "created" | "none";
 
 export async function searchPagesRaw(
-  query?: string
+  query?: string,
+  sort: SortOrder = "none"
 ): Promise<PageObjectResponse[]> {
   const client = getClient();
   const pages: PageObjectResponse[] = [];
   let nextCursor: string | undefined;
+
+  // Notion search API only supports last_edited_time as timestamp
+  const sortParam =
+    sort === "edited"
+      ? { timestamp: "last_edited_time" as const, direction: "descending" as const }
+      : sort === "created"
+        ? { timestamp: "last_edited_time" as const, direction: "ascending" as const }
+        : undefined;
 
   do {
     const res = await withRetry(() =>
       client.search({
         query,
         filter: { value: "page", property: "object" },
+        sort: sortParam,
         start_cursor: nextCursor,
       })
     );
@@ -69,4 +76,12 @@ export async function searchPagesRaw(
   } while (nextCursor);
 
   return pages;
+}
+
+export async function searchPages(
+  query?: string,
+  sort: SortOrder = "none"
+): Promise<NotaPage[]> {
+  const raw = await searchPagesRaw(query, sort);
+  return raw.map(toNotaPage);
 }
