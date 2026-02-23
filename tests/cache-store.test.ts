@@ -135,6 +135,31 @@ describe("cache file handling", () => {
     expect(existsSync(blockPath)).toBe(false);
   });
 
+  test("invalidatePage は search キャッシュからも該当ページを除去する（ゴースト防止）", () => {
+    // search キャッシュに page-1 と page-2 を入れておく
+    const page1 = makePage("page-1");
+    const page2 = makePage("page-2");
+    setCachedSearch(undefined, "edited", [page1, page2]);
+    setCachedSearch("query", "none", [page1]);
+
+    // page-1 を削除
+    invalidatePage("page-1");
+
+    // search キャッシュから page-1 が消えている
+    const allResults = getCachedSearch(undefined, "edited", true);
+    expect(allResults).not.toBeNull();
+    expect(allResults?.map((p) => p.id)).not.toContain("page-1");
+    expect(allResults?.map((p) => p.id)).toContain("page-2");
+
+    const queryResults = getCachedSearch("query", "none", true);
+    expect(queryResults).not.toBeNull();
+    expect(queryResults?.map((p) => p.id)).not.toContain("page-1");
+
+    // pages/blocks は消えている
+    expect(existsSync(join(getPagesDir(), "page-1.json"))).toBe(false);
+    expect(existsSync(join(getBlocksDir(), "page-1.json"))).toBe(false);
+  });
+
   test("clearAllCache は全ディレクトリを作り直す", () => {
     setCachedPage(makePage("page-1"));
     setCachedBlocks("page-1", []);
