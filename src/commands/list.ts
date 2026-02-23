@@ -19,19 +19,26 @@ export function registerListCommand(program: Command): void {
     .command("list")
     .description("List Notion pages")
     .option("--search <query>", "Search pages by query")
-    .option("--sort <order>", "Sort order: edited (default), created, none", "edited")
+    .option("--sort <order>", "Sort order: edited (default), none", "edited")
     .option("--cache", "Use cache when available")
     .option("--json", "Output raw JSON")
     .action(async (options: ListOptions) => {
       try {
-        const sort = (options.sort ?? "edited") as SortOrder;
+        const sortOption = options.sort ?? "edited";
+        if (sortOption !== "edited" && sortOption !== "none") {
+          console.error("Error: --sort must be one of: edited, none");
+          process.exit(1);
+        }
+        const sort: SortOrder = sortOption;
         // Cache key includes sort to avoid mixing sorted/unsorted results
         const cacheKey = options.search
           ? `${options.search}:${sort}`
           : `:${sort}`;
 
         const store = loadCache();
-        let rawPages = options.cache ? getCachedPages(store, cacheKey) : null;
+        let rawPages = options.cache
+          ? getCachedPages(store, cacheKey, true)
+          : null;
 
         if (!rawPages) {
           rawPages = await searchPagesRaw(options.search, sort);
@@ -42,7 +49,7 @@ export function registerListCommand(program: Command): void {
         const pages = rawPages.map(toNotaPage);
 
         if (options.json) {
-          console.log(JSON.stringify(pages, null, 2));
+          console.log(JSON.stringify(rawPages, null, 2));
           return;
         }
 

@@ -28,7 +28,9 @@ export function emptyStore(): CacheStore {
 }
 
 export function isStale(entry: CacheEntry<unknown>): boolean {
-  const age = (Date.now() - new Date(entry.cached_at).getTime()) / 1000;
+  const timestamp = new Date(entry.cached_at).getTime();
+  if (!Number.isFinite(timestamp)) return true;
+  const age = (Date.now() - timestamp) / 1000;
   return age > entry.ttl_seconds;
 }
 

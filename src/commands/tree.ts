@@ -163,7 +163,9 @@ export function registerTreeCommand(program: Command): void {
     .action(async (options: TreeOptions) => {
       try {
         const store = loadCache();
-        let rawPages = options.cache ? getCachedPages(store) : null;
+        let rawPages = options.cache
+          ? getCachedPages(store, undefined, true)
+          : null;
 
         if (!rawPages) {
           rawPages = await searchPagesRaw();

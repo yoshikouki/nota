@@ -158,9 +158,11 @@ export function registerShowCommand(program: Command): void {
     .action(async (pageId: string, options: ShowOptions) => {
       try {
         const store = loadCache();
-        const cachedPage = options.cache ? getCachedPage(store, pageId) : null;
+        const cachedPage = options.cache
+          ? getCachedPage(store, pageId, true)
+          : null;
         let flattenedBlocks =
-          options.cache ? getCachedBlocks(store, pageId) : null;
+          options.cache ? getCachedBlocks(store, pageId, true) : null;
 
         if (!cachedPage || !flattenedBlocks) {
           const page = await fetchPageRaw(pageId);

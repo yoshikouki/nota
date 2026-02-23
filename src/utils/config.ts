@@ -5,8 +5,9 @@ export interface Config {
 export function loadConfig(): Config {
   const notionToken = process.env.NOTION_TOKEN;
   if (!notionToken) {
-    console.error("Error: NOTION_TOKEN is not set.");
-    process.exit(1);
+    throw new Error(
+      "NOTION_TOKEN is not set. Export it or add to ~/.zshenv.local"
+    );
   }
   return { notionToken };
 }

@@ -1,6 +1,15 @@
 import type { NotaPage } from "../types";
 import { getClient, withRetry } from "./client";
-import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import type {
+  PageObjectResponse,
+  PartialPageObjectResponse,
+} from "@notionhq/client/build/src/api-endpoints";
+
+function isFullPage(
+  page: PageObjectResponse | PartialPageObjectResponse
+): page is PageObjectResponse {
+  return "properties" in page;
+}
 
 export function toNotaPage(page: PageObjectResponse): NotaPage {
   const titleProp = Object.values(page.properties).find(
@@ -40,10 +49,13 @@ export async function fetchPageRaw(pageId: string): Promise<PageObjectResponse> 
   const res = await withRetry(() =>
     client.pages.retrieve({ page_id: pageId })
   );
-  return res as PageObjectResponse;
+  if (!isFullPage(res)) {
+    throw new Error(`Received partial page response for id: ${pageId}`);
+  }
+  return res;
 }
 
-export type SortOrder = "edited" | "created" | "none";
+export type SortOrder = "edited" | "none";
 
 export async function searchPagesRaw(
   query?: string,
@@ -57,9 +69,7 @@ export async function searchPagesRaw(
   const sortParam =
     sort === "edited"
       ? { timestamp: "last_edited_time" as const, direction: "descending" as const }
-      : sort === "created"
-        ? { timestamp: "last_edited_time" as const, direction: "ascending" as const }
-        : undefined;
+      : undefined;
 
   do {
     const res = await withRetry(() =>
@@ -71,7 +81,18 @@ export async function searchPagesRaw(
       })
     );
 
-    pages.push(...(res.results as PageObjectResponse[]));
+    for (const result of res.results) {
+      if (result.object !== "page") {
+        continue;
+      }
+      if (isFullPage(result)) {
+        pages.push(result);
+      } else {
+        console.error(
+          `nota: skipped partial page response for id: ${result.id}`
+        );
+      }
+    }
     nextCursor = res.has_more ? (res.next_cursor ?? undefined) : undefined;
   } while (nextCursor);
 

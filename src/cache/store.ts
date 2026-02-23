@@ -47,7 +47,19 @@ export function loadCache(): CacheStore {
 
   try {
     const raw = readFileSync(cachePath, "utf-8");
-    const parsed = JSON.parse(raw) as unknown;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw) as unknown;
+    } catch {
+      try {
+        renameSync(cachePath, `${cachePath}.bak`);
+      } catch {
+        // ignore backup failure and continue resetting
+      }
+      console.error("nota: cache corrupted, resetting (backed up to cache.json.bak)");
+      return emptyStore();
+    }
+
     if (!isCacheStore(parsed)) {
       return emptyStore();
     }
@@ -67,11 +79,15 @@ export function saveCache(store: CacheStore): void {
 
 export function getCachedPages(
   store: CacheStore,
-  query?: string
+  query?: string,
+  allowStale = false
 ): PageObjectResponse[] | null {
   const key = normalizeQuery(query);
   const entry = store.searches[key];
-  if (!entry || isStale(entry)) {
+  if (!entry) {
+    return null;
+  }
+  if (!allowStale && isStale(entry)) {
     return null;
   }
   return entry.raw;
@@ -88,10 +104,14 @@ export function setCachedPages(
 
 export function getCachedPage(
   store: CacheStore,
-  pageId: string
+  pageId: string,
+  allowStale = false
 ): PageObjectResponse | null {
   const entry = store.pages[pageId];
-  if (!entry || isStale(entry)) {
+  if (!entry) {
+    return null;
+  }
+  if (!allowStale && isStale(entry)) {
     return null;
   }
   return entry.raw;
@@ -106,10 +126,14 @@ export function setCachedPage(
 
 export function getCachedBlocks(
   store: CacheStore,
-  pageId: string
+  pageId: string,
+  allowStale = false
 ): BlockObjectResponse[] | null {
   const entry = store.blocks[pageId];
-  if (!entry || isStale(entry)) {
+  if (!entry) {
+    return null;
+  }
+  if (!allowStale && isStale(entry)) {
     return null;
   }
   return entry.raw;
@@ -126,6 +150,7 @@ export function setCachedBlocks(
 export function invalidatePage(store: CacheStore, pageId: string): void {
   delete store.pages[pageId];
   delete store.blocks[pageId];
+  store.searches = {};
 }
 
 export function clearCache(): void {
