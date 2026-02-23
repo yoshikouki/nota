@@ -15,6 +15,7 @@ import {
   setCachedBlocks,
   setCachedPage,
 } from "../cache/store";
+import { loadConfig } from "../utils/config-file";
 
 type NotionListBlock = ListBlockChildrenResponse["results"][number];
 type RawBlockNode = BlockObjectResponse & { children: RawBlockNode[] };
@@ -155,14 +156,19 @@ export function registerShowCommand(program: Command): void {
     .description("Show page content as Markdown")
     .option("--cache", "Use cache when available")
     .option("--raw", "Output raw blocks JSON")
-    .action(async (pageId: string, options: ShowOptions) => {
+    .action(async (pageId: string, options: ShowOptions, command: Command) => {
       try {
+        const config = loadConfig();
+        const cacheSource = command.getOptionValueSource("cache");
+        const allowStale =
+          options.cache === true ||
+          (cacheSource !== "cli" && config.cache?.enabled === true);
+
         const store = loadCache();
-        const cachedPage = options.cache
-          ? getCachedPage(store, pageId, true)
+        const cachedPage = allowStale ? getCachedPage(store, pageId, true) : null;
+        let flattenedBlocks = allowStale
+          ? getCachedBlocks(store, pageId, true)
           : null;
-        let flattenedBlocks =
-          options.cache ? getCachedBlocks(store, pageId, true) : null;
 
         if (!cachedPage || !flattenedBlocks) {
           const page = await fetchPageRaw(pageId);

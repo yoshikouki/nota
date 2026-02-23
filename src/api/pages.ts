@@ -57,6 +57,14 @@ export async function fetchPageRaw(pageId: string): Promise<PageObjectResponse> 
 
 export type SortOrder = "edited" | "none";
 
+function getSortParam(sort: SortOrder):
+  | { timestamp: "last_edited_time"; direction: "descending" }
+  | undefined {
+  return sort === "edited"
+    ? { timestamp: "last_edited_time", direction: "descending" }
+    : undefined;
+}
+
 export async function searchPagesRaw(
   query?: string,
   sort: SortOrder = "none"
@@ -66,10 +74,7 @@ export async function searchPagesRaw(
   let nextCursor: string | undefined;
 
   // Notion search API only supports last_edited_time as timestamp
-  const sortParam =
-    sort === "edited"
-      ? { timestamp: "last_edited_time" as const, direction: "descending" as const }
-      : undefined;
+  const sortParam = getSortParam(sort);
 
   do {
     const res = await withRetry(() =>

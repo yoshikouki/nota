@@ -8,6 +8,7 @@ import {
   saveCache,
   setCachedPages,
 } from "../cache/store";
+import { loadConfig } from "../utils/config-file";
 
 const DEFAULT_DEPTH = 3;
 
@@ -160,10 +161,16 @@ export function registerTreeCommand(program: Command): void {
     .option("--cache", "Use cache when available")
     .option("--root <page-id>", "Root page ID")
     .option("--depth <n>", "Tree depth (default: 3)", parseDepth, DEFAULT_DEPTH)
-    .action(async (options: TreeOptions) => {
+    .action(async (options: TreeOptions, command: Command) => {
       try {
+        const config = loadConfig();
+        const cacheSource = command.getOptionValueSource("cache");
+        const allowStale =
+          options.cache === true ||
+          (cacheSource !== "cli" && config.cache?.enabled === true);
+
         const store = loadCache();
-        let rawPages = options.cache
+        let rawPages = allowStale
           ? getCachedPages(store, undefined, true)
           : null;
 

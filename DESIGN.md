@@ -132,6 +132,46 @@ $XDG_CACHE_HOME/nota/   （デフォルト: ~/.cache/nota/）
 - `--cache` フラグなしでも、フレッシュキャッシュがあれば返す（速度優先）
 - search キャッシュの TTL は短め（60秒）：新規ページが検索に反映されるまでの遅延を抑える
 
+## Config File
+
+永続デフォルトは JSON 設定ファイルから読み込む。
+
+### 保存場所（XDG 準拠）
+
+```
+$XDG_CONFIG_HOME/nota/   （デフォルト: ~/.config/nota/）
+  config.json
+```
+
+### スキーマ
+
+```jsonc
+{
+  "cache": {
+    "enabled": false, // 既定: false
+    "ttl": 300        // 既定: 300
+  },
+  "list": {
+    "sort": "edited", // 既定: edited
+    "database": "..." // 任意: list の既定 DB ID
+  }
+}
+```
+
+### 優先順位
+
+設定値は次の順でマージする。
+
+1. CLI フラグ
+2. `config.json`
+3. ハードコード既定値
+
+### エラー時の挙動
+
+- 設定ファイルが存在しない場合は `{}` を返す
+- JSON パースエラー時は stderr に警告し、`{}` を返す
+- 読み込み失敗時は `{}` を返す（CLI の実行は継続）
+
 ---
 
 ## Notion API マッピング
