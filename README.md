@@ -35,17 +35,27 @@ nota config unset <key>
 ## Install
 
 ```bash
-# Requires NOTION_TOKEN in your environment
-export NOTION_TOKEN="secret_..."
+brew tap yoshikouki/tap
+brew install nota
+```
 
-# From source (Bun required)
+Then set your Notion API token:
+
+```bash
+export NOTION_TOKEN="secret_..."
+# or add to ~/.zshenv / ~/.zshrc / ~/.bashrc
+```
+
+Get a token at: https://www.notion.so/my-integrations
+
+### From source (Bun required)
+
+```bash
 git clone https://github.com/yoshikouki/nota
 cd nota
 bun install
 ln -s $(pwd)/src/index.ts ~/.local/bin/nota
 ```
-
-Brew formula and pre-built binary coming soon.
 
 ---
 
@@ -127,7 +137,7 @@ TTL: 5 minutes for pages/blocks, 1 minute for searches. Pass `--cache` to serve 
 
 **Read features:** done  
 **Write features:** done (`nota edit --title`, `nota edit --editor`, `nota delete`)  
-**Brew distribution:** next (`bun build --compile` → single binary → brew formula)
+**Brew distribution:** done (`brew tap yoshikouki/tap && brew install nota`)
 
 ---
 
