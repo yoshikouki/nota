@@ -23,6 +23,11 @@ nota tree [--root <page-id>] [--depth <n>] [--cache]
 nota create <title> [--parent <id>] [--content <markdown>] [--json]
 nota edit <page-id> [--title <new-title>] [--editor] [--append]
 nota delete <page-id> [--force]
+nota blocks list <page-id> [--json]
+nota blocks get <block-id>
+nota blocks update <block-id> [--content <text>] [--json]
+nota blocks delete <block-id> [--force]
+nota blocks append <page-id> [--content <markdown>]
 nota stats [--no-api]
 nota cache status
 nota cache clear [--force] [--page <id>]
@@ -103,6 +108,13 @@ nota create "Quick note"                 # uses default parent
 nota delete abc123def456
 nota delete abc123def456 --force  # skip confirmation
 
+# Block-level operations
+nota blocks list abc123def456                       # list blocks with IDs and types
+nota blocks get <block-id>                          # retrieve single block as JSON
+echo "updated text" | nota blocks update <block-id> # update block text
+nota blocks delete <block-id> --force               # delete a single block
+cat appendix.md | nota blocks append abc123def456   # append markdown blocks
+
 # API status, cache breakdown, and page analytics
 nota stats
 nota stats --no-api  # skip connectivity check
@@ -154,7 +166,7 @@ TTL: 5 minutes for pages/blocks, 1 minute for searches. Pass `--cache` to serve 
 ## Status
 
 **Read features:** done  
-**Write features:** done (`nota create`, `nota edit --title`, `nota edit --editor`, `nota delete`)  
+**Write features:** done (`nota create`, `nota edit`, `nota delete`, `nota blocks list/get/update/delete/append`)  
 **Brew distribution:** done (`brew tap yoshikouki/tap && brew install nota`)
 
 ---

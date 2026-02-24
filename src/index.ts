@@ -4,6 +4,7 @@ import { Command } from "commander";
 import { registerListCommand } from "./commands/list";
 import { registerShowCommand } from "./commands/show";
 import { registerTreeCommand } from "./commands/tree";
+import { registerBlocksCommand } from "./commands/blocks";
 import { registerCreateCommand } from "./commands/create";
 import { registerDbCommand } from "./commands/db";
 import { registerEditCommand } from "./commands/edit";
@@ -22,6 +23,7 @@ program
 registerListCommand(program);
 registerShowCommand(program);
 registerTreeCommand(program);
+registerBlocksCommand(program);
 registerCreateCommand(program);
 registerDbCommand(program);
 registerEditCommand(program);

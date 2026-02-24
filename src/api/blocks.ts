@@ -4,6 +4,69 @@ import type {
 } from "@notionhq/client/build/src/api-endpoints";
 import { getClient, withRetry } from "./client";
 
+/** Retrieve a single block by ID. */
+export async function retrieveBlock(blockId: string): Promise<BlockObjectResponse> {
+  const client = getClient();
+  const res = await withRetry(() =>
+    client.blocks.retrieve({ block_id: blockId })
+  );
+  if (!("type" in res)) {
+    throw new Error(`Received partial block response for id: ${blockId}`);
+  }
+  return res as BlockObjectResponse;
+}
+
+/**
+ * Hard-delete a block via blocks.delete.
+ * Unlike archiveBlock (which uses update+archived), this calls the DELETE endpoint.
+ */
+export async function deleteBlock(blockId: string): Promise<void> {
+  const client = getClient();
+  await withRetry(() => client.blocks.delete({ block_id: blockId }));
+}
+
+/**
+ * Update the text content of a rich_text-capable block.
+ * Preserves block type; replaces rich_text with a single plain-text span.
+ * Supported types: paragraph, heading_1/2/3, bulleted_list_item,
+ * numbered_list_item, quote, callout, toggle, to_do, code.
+ */
+export async function updateBlockText(
+  blockId: string,
+  text: string
+): Promise<BlockObjectResponse> {
+  const client = getClient();
+  const current = await retrieveBlock(blockId);
+  const richText = [{ type: "text" as const, text: { content: text } }];
+
+  const textBlockTypes = [
+    "paragraph", "heading_1", "heading_2", "heading_3",
+    "bulleted_list_item", "numbered_list_item", "quote",
+    "callout", "toggle", "to_do", "code",
+  ] as const;
+  type TextBlockType = typeof textBlockTypes[number];
+
+  const blockType = current.type as string;
+  if (!textBlockTypes.includes(blockType as TextBlockType)) {
+    throw new Error(
+      `Block type "${blockType}" does not support text update. ` +
+      `Supported: ${textBlockTypes.join(", ")}`
+    );
+  }
+
+  const res = await withRetry(() =>
+    client.blocks.update({
+      block_id: blockId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      [blockType]: { rich_text: richText },
+    } as any)
+  );
+  if (!("type" in res)) {
+    throw new Error(`Received partial block response after update: ${blockId}`);
+  }
+  return res as BlockObjectResponse;
+}
+
 /**
  * Fetch all direct children of a block (non-recursive).
  * Used for delete-then-append flows.
