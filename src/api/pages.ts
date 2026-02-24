@@ -185,7 +185,14 @@ export async function detectParentType(
   } catch {
     // not a page
   }
-  // Try database
+  // Try data source (SDK v5: connected/synced databases use dataSources API)
+  try {
+    await client.dataSources.retrieve({ data_source_id: id });
+    return "database";
+  } catch {
+    // not a data source
+  }
+  // Try legacy database
   try {
     const res = await client.databases.retrieve({ database_id: id });
     if (res.object === "database") return "database";
@@ -213,20 +220,33 @@ export async function createPage(
     children = markdownToNotionBlocks(contentMarkdown) as typeof children;
   }
 
-  const parent =
-    parentType === "database"
-      ? ({ database_id: parentId } as const)
-      : ({ page_id: parentId } as const);
+  const pageParent =
+    parentType === "page" ? ({ page_id: parentId } as const) : null;
 
-  const res = await withRetry(() =>
+  const createArgs = (parent: Parameters<typeof client.pages.create>[0]["parent"]) =>
     client.pages.create({
       parent,
       properties: {
         title: { title: [{ text: { content: title } }] },
       },
       ...(children ? { children } : {}),
-    })
-  );
+    });
+
+  let res: Awaited<ReturnType<typeof client.pages.create>>;
+
+  if (pageParent) {
+    res = await withRetry(() => createArgs(pageParent));
+  } else {
+    // For databases, try data_source_id first (SDK v5 connected databases),
+    // fall back to legacy database_id.
+    try {
+      res = await withRetry(() =>
+        createArgs({ data_source_id: parentId } as unknown as Parameters<typeof client.pages.create>[0]["parent"])
+      );
+    } catch {
+      res = await withRetry(() => createArgs({ database_id: parentId } as const));
+    }
+  }
 
   if (!("properties" in res)) {
     throw new Error("Unexpected partial response from pages.create");
