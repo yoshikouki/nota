@@ -7,10 +7,12 @@ import { fetchPageMarkdown } from "../api/content";
 import { updatePageTitle, clearPageBlocks, appendBlocks } from "../api/blocks";
 import { markdownToNotionBlocks } from "../render/markdown";
 import { invalidatePage } from "../cache/store";
+import { isStdinPiped, readStdin } from "../utils/stdin";
 
 interface EditOptions {
   title?: string;
   editor?: boolean;
+  append?: boolean;
 }
 
 function openEditor(filePath: string): void {
@@ -35,13 +37,47 @@ export function registerEditCommand(program: Command): void {
       "--editor",
       "Open $EDITOR with the current page content; save to replace"
     )
+    .option("--append", "Append piped content instead of replacing")
     .action(async (pageId: string, options: EditOptions) => {
       try {
-        if (!options.title && !options.editor) {
+        const stdinPiped = isStdinPiped();
+
+        if (!options.title && !options.editor && !stdinPiped) {
           console.error(
-            "Error: specify --title <title> and/or --editor"
+            "Error: specify --title <title>, --editor, or pipe content via stdin\n" +
+            "  nota edit <id> --title \"New title\"\n" +
+            "  nota edit <id> --editor\n" +
+            "  cat file.md | nota edit <id>\n" +
+            "  cat file.md | nota edit <id> --append"
           );
           process.exit(1);
+        }
+
+        // ── stdin pipe flow ────────────────────────────────────────────
+        if (stdinPiped && !options.editor) {
+          const markdown = await readStdin();
+          if (!markdown.trim()) {
+            console.error("Error: stdin is empty.");
+            process.exit(1);
+          }
+
+          const blocks = markdownToNotionBlocks(markdown.trimEnd());
+          if (blocks.length === 0) {
+            console.error("Error: could not parse any blocks from stdin.");
+            process.exit(1);
+          }
+
+          if (options.append) {
+            process.stderr.write(`Appending ${blocks.length} blocks…\n`);
+            await appendBlocks(pageId, blocks);
+          } else {
+            process.stderr.write(`Replacing content (${blocks.length} blocks)…\n`);
+            await clearPageBlocks(pageId);
+            await appendBlocks(pageId, blocks);
+          }
+          invalidatePage(pageId);
+          console.log(`Page updated.`);
+          return;
         }
 
         // ── title update ───────────────────────────────────────────────

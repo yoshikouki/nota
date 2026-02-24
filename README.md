@@ -21,7 +21,7 @@ nota list [--search <query>] [--sort edited|created|none] [--json] [--cache]
 nota show <page-id> [--cache] [--raw]
 nota tree [--root <page-id>] [--depth <n>] [--cache]
 nota create <title> [--parent <id>] [--content <markdown>] [--json]
-nota edit <page-id> [--title <new-title>] [--editor]
+nota edit <page-id> [--title <new-title>] [--editor] [--append]
 nota delete <page-id> [--force]
 nota stats [--no-api]
 nota cache status
@@ -85,9 +85,14 @@ nota edit abc123def456 --title "New title"
 # Edit page content in $EDITOR (opens current content as Markdown)
 nota edit abc123def456 --editor
 
+# Replace or append page content via stdin
+cat new-content.md | nota edit abc123def456           # replace all blocks
+cat appendix.md    | nota edit abc123def456 --append  # append to existing
+
 # Create a new page (parent required)
 nota create "Today's notes" --parent <page-or-database-id>
 nota create "Meeting memo" --parent <id> --content "## Agenda\n- item 1"
+cat draft.md | nota create "Today's notes" --parent <id>  # stdin as content
 
 # Set a default parent so you can omit --parent
 nota config set create.parent <page-or-database-id>

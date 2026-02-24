@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { createPage, detectParentType } from "../api/pages";
 import { loadConfig } from "../utils/config-file";
+import { isStdinPiped, readStdin } from "../utils/stdin";
 
 export function registerCreateCommand(program: Command): void {
   program
@@ -37,8 +38,14 @@ export function registerCreateCommand(program: Command): void {
             process.stderr.write("                      \r");
           }
 
+          // Resolve content: flag > stdin pipe > none
+          let content = options.content;
+          if (!content && isStdinPiped()) {
+            content = await readStdin();
+          }
+
           process.stderr.write(`Creating page in ${parentType}: ${parentId}…\r`);
-          const page = await createPage(title, parentId, parentType, options.content);
+          const page = await createPage(title, parentId, parentType, content);
           process.stderr.write("                                              \r");
 
           if (options.json) {
