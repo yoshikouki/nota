@@ -120,6 +120,59 @@ export async function searchPages(
   return raw.map(toNotaPage);
 }
 
+/** Move a page to a different parent (page or data source). */
+export async function movePage(
+  pageId: string,
+  newParentId: string,
+  parentType: "page" | "database"
+): Promise<PageObjectResponse> {
+  const client = getClient();
+  const parent =
+    parentType === "database"
+      ? ({ data_source_id: newParentId, type: "data_source_id" as const })
+      : ({ page_id: newParentId, type: "page_id" as const });
+
+  const res = await withRetry(() =>
+    client.pages.move({ page_id: pageId, parent })
+  );
+  if (!("properties" in res)) {
+    throw new Error(`Received partial page response after move: ${pageId}`);
+  }
+  return res as PageObjectResponse;
+}
+
+/** Retrieve a page property (supports paginated results for relations etc.). */
+export async function getPageProperty(
+  pageId: string,
+  propertyId: string
+): Promise<unknown> {
+  const client = getClient();
+  const results: unknown[] = [];
+  let nextCursor: string | undefined;
+
+  do {
+    const res = await withRetry(() =>
+      client.pages.properties.retrieve({
+        page_id: pageId,
+        property_id: propertyId,
+        ...(nextCursor ? { start_cursor: nextCursor } : {}),
+      })
+    );
+
+    // Single item (non-paginated)
+    if (res.object === "property_item") {
+      return res;
+    }
+
+    // Paginated list
+    const list = res as { results: unknown[]; has_more: boolean; next_cursor: string | null };
+    results.push(...list.results);
+    nextCursor = list.has_more ? (list.next_cursor ?? undefined) : undefined;
+  } while (nextCursor);
+
+  return results;
+}
+
 /** Auto-detect whether an ID belongs to a page or a database. */
 export async function detectParentType(
   id: string

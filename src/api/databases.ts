@@ -136,6 +136,71 @@ export async function queryDatabase(
   return pages;
 }
 
+/** Update a data source's title and/or properties schema. */
+export async function updateDatabase(
+  dataSourceId: string,
+  options: {
+    title?: string;
+    properties?: Record<string, unknown>;
+  }
+): Promise<DataSourceObjectResponse> {
+  const client = getClient();
+
+  const titleParam = options.title
+    ? [{ type: "text" as const, text: { content: options.title } }]
+    : undefined;
+
+  const res = await withRetry(() =>
+    client.dataSources.update({
+      data_source_id: dataSourceId,
+      ...(titleParam ? { title: titleParam } : {}),
+      ...(options.properties
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? { properties: options.properties as any }
+        : {}),
+    })
+  );
+
+  if (!("properties" in res)) {
+    throw new Error(`Received partial response after update: ${dataSourceId}`);
+  }
+  return res as DataSourceObjectResponse;
+}
+
+export interface NotaTemplate {
+  id: string;
+  name: string;
+  isDefault: boolean;
+}
+
+/** List page templates available for a data source. */
+export async function listTemplates(
+  dataSourceId: string
+): Promise<NotaTemplate[]> {
+  const client = getClient();
+  const templates: NotaTemplate[] = [];
+  let nextCursor: string | undefined;
+
+  do {
+    const res = await withRetry(() =>
+      client.dataSources.listTemplates({
+        data_source_id: dataSourceId,
+        ...(nextCursor ? { start_cursor: nextCursor } : {}),
+      })
+    );
+    templates.push(
+      ...res.templates.map((t) => ({
+        id: t.id,
+        name: t.name,
+        isDefault: t.is_default,
+      }))
+    );
+    nextCursor = res.has_more ? (res.next_cursor ?? undefined) : undefined;
+  } while (nextCursor);
+
+  return templates;
+}
+
 /** Query and convert results to NotaPage. */
 export async function queryDatabasePages(
   dataSourceId: string,

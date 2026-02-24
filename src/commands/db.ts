@@ -2,9 +2,11 @@ import { Command } from "commander";
 import {
   type QueryFilter,
   getDatabaseSchema,
+  listTemplates,
   queryDatabase,
   searchDatabases,
   toNotaDatabase,
+  updateDatabase,
 } from "../api/databases";
 import { toNotaPage } from "../api/pages";
 
@@ -163,4 +165,85 @@ export function registerDbCommand(program: Command): void {
         }
       }
     );
+
+  // ── nota db update ──────────────────────────────────────────────────────────
+  db.command("update <database-id>")
+    .description("Update a database title or properties schema")
+    .option("--title <title>", "New database title")
+    .option(
+      "--schema <json>",
+      "Properties schema update as JSON (Notion API format)"
+    )
+    .option("--json", "Output updated database as JSON")
+    .action(
+      async (
+        databaseId: string,
+        options: { title?: string; schema?: string; json?: boolean }
+      ) => {
+        try {
+          if (!options.title && !options.schema) {
+            console.error(
+              "Error: specify --title and/or --schema\n" +
+              "  nota db update <id> --title \"New name\"\n" +
+              "  nota db update <id> --schema '{\"Status\":{\"select\":{}}}'"
+            );
+            process.exit(1);
+          }
+
+          let properties: Record<string, unknown> | undefined;
+          if (options.schema) {
+            try {
+              properties = JSON.parse(options.schema) as Record<string, unknown>;
+            } catch {
+              console.error("Error: --schema must be valid JSON");
+              process.exit(1);
+            }
+          }
+
+          const updated = await updateDatabase(databaseId, {
+            title: options.title,
+            properties,
+          });
+
+          if (options.json) {
+            console.log(JSON.stringify(updated, null, 2));
+          } else {
+            const d = toNotaDatabase(updated);
+            console.log(`Updated: "${d.title}" (${d.id})`);
+            if (options.title) console.log(`  Title: ${d.title}`);
+            if (options.schema) console.log(`  Schema updated`);
+          }
+        } catch (err: unknown) {
+          console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+          process.exit(1);
+        }
+      }
+    );
+
+  // ── nota db templates ───────────────────────────────────────────────────────
+  db.command("templates <database-id>")
+    .description("List page templates available in a database")
+    .option("--json", "Output as JSON")
+    .action(async (databaseId: string, options: { json?: boolean }) => {
+      try {
+        const templates = await listTemplates(databaseId);
+
+        if (options.json) {
+          console.log(JSON.stringify(templates, null, 2));
+          return;
+        }
+        if (templates.length === 0) {
+          console.log("No templates found.");
+          return;
+        }
+        for (const t of templates) {
+          const def = t.isDefault ? " (default)" : "";
+          console.log(`  ${t.id}  ${t.name}${def}`);
+        }
+        console.log(`\n  ${templates.length} template(s)`);
+      } catch (err: unknown) {
+        console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+        process.exit(1);
+      }
+    });
 }
