@@ -11,6 +11,8 @@ const SUPPORTED_KEYS = new Set([
   "cache.ttl",
   "list.sort",
   "list.database",
+  "create.parent",
+  "create.parentType",
 ]);
 
 function coerceValue(value: string): boolean | number | string {
@@ -58,6 +60,12 @@ function validateValueForKey(
   if (key === "list.database" && typeof value !== "string") {
     throw new Error("list.database must be a string");
   }
+  if (key === "create.parent" && typeof value !== "string") {
+    throw new Error("create.parent must be a string (page or database ID)");
+  }
+  if (key === "create.parentType" && value !== "page" && value !== "database") {
+    throw new Error('create.parentType must be one of: page, database');
+  }
 }
 
 function setConfigValue(
@@ -86,6 +94,16 @@ function setConfigValue(
     return { ...config, list: nextList };
   }
 
+  if (section === "create") {
+    const nextCreate = { ...(config.create ?? {}) };
+    if (field === "parent") {
+      nextCreate.parent = value as string;
+    } else if (field === "parentType") {
+      nextCreate.parentType = value as "page" | "database";
+    }
+    return { ...config, create: nextCreate };
+  }
+
   return config;
 }
 
@@ -94,6 +112,7 @@ function unsetConfigValue(config: NotaConfig, key: string): NotaConfig {
     ...config,
     cache: config.cache ? { ...config.cache } : undefined,
     list: config.list ? { ...config.list } : undefined,
+    create: config.create ? { ...config.create } : undefined,
   };
 
   if (key === "cache.enabled" && nextConfig.cache) {
@@ -104,6 +123,10 @@ function unsetConfigValue(config: NotaConfig, key: string): NotaConfig {
     delete nextConfig.list.sort;
   } else if (key === "list.database" && nextConfig.list) {
     delete nextConfig.list.database;
+  } else if (key === "create.parent" && nextConfig.create) {
+    delete nextConfig.create.parent;
+  } else if (key === "create.parentType" && nextConfig.create) {
+    delete nextConfig.create.parentType;
   }
 
   if (nextConfig.cache && Object.keys(nextConfig.cache).length === 0) {
@@ -111,6 +134,9 @@ function unsetConfigValue(config: NotaConfig, key: string): NotaConfig {
   }
   if (nextConfig.list && Object.keys(nextConfig.list).length === 0) {
     delete nextConfig.list;
+  }
+  if (nextConfig.create && Object.keys(nextConfig.create).length === 0) {
+    delete nextConfig.create;
   }
 
   return nextConfig;

@@ -20,6 +20,7 @@ The typical pattern for using Notion data in scripts is: sync pages to git → r
 nota list [--search <query>] [--sort edited|created|none] [--json] [--cache]
 nota show <page-id> [--cache] [--raw]
 nota tree [--root <page-id>] [--depth <n>] [--cache]
+nota create <title> [--parent <id>] [--content <markdown>] [--json]
 nota edit <page-id> [--title <new-title>] [--editor]
 nota delete <page-id> [--force]
 nota stats [--no-api]
@@ -84,6 +85,15 @@ nota edit abc123def456 --title "New title"
 # Edit page content in $EDITOR (opens current content as Markdown)
 nota edit abc123def456 --editor
 
+# Create a new page (parent required)
+nota create "Today's notes" --parent <page-or-database-id>
+nota create "Meeting memo" --parent <id> --content "## Agenda\n- item 1"
+
+# Set a default parent so you can omit --parent
+nota config set create.parent <page-or-database-id>
+nota config set create.parentType page   # or: database
+nota create "Quick note"                 # uses default parent
+
 # Archive (soft-delete) a page
 nota delete abc123def456
 nota delete abc123def456 --force  # skip confirmation
@@ -98,6 +108,9 @@ nota config set cache.enabled true
 nota config set list.sort edited
 nota config set list.database <database-id>
 nota config unset list.database
+nota config set create.parent <page-or-database-id>
+nota config set create.parentType page   # or: database (skip auto-detect)
+nota config unset create.parent
 ```
 
 ---
@@ -136,7 +149,7 @@ TTL: 5 minutes for pages/blocks, 1 minute for searches. Pass `--cache` to serve 
 ## Status
 
 **Read features:** done  
-**Write features:** done (`nota edit --title`, `nota edit --editor`, `nota delete`)  
+**Write features:** done (`nota create`, `nota edit --title`, `nota edit --editor`, `nota delete`)  
 **Brew distribution:** done (`brew tap yoshikouki/tap && brew install nota`)
 
 ---

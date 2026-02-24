@@ -10,6 +10,10 @@ export interface NotaConfig {
     sort?: "edited" | "none";
     database?: string;
   };
+  create?: {
+    parent?: string;
+    parentType?: "page" | "database";
+  };
 }
 
 function getConfigDir(): string {

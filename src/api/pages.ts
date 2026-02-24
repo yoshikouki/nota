@@ -119,3 +119,64 @@ export async function searchPages(
   const raw = await searchPagesRaw(query, sort);
   return raw.map(toNotaPage);
 }
+
+/** Auto-detect whether an ID belongs to a page or a database. */
+export async function detectParentType(
+  id: string
+): Promise<"page" | "database"> {
+  const client = getClient();
+  // Try page first
+  try {
+    const res = await client.pages.retrieve({ page_id: id });
+    if (res.object === "page") return "page";
+  } catch {
+    // not a page
+  }
+  // Try database
+  try {
+    const res = await client.databases.retrieve({ database_id: id });
+    if (res.object === "database") return "database";
+  } catch {
+    // not a database
+  }
+  throw new Error(
+    `Could not find a page or database with id: ${id}\n` +
+    "Make sure the integration has access to it (share the page/database with your integration)."
+  );
+}
+
+export async function createPage(
+  title: string,
+  parentId: string,
+  parentType: "page" | "database",
+  contentMarkdown?: string
+): Promise<PageObjectResponse> {
+  const client = getClient();
+
+  // Build blocks from markdown if provided
+  let children: Parameters<typeof client.pages.create>[0]["children"];
+  if (contentMarkdown) {
+    const { markdownToNotionBlocks } = await import("../render/markdown");
+    children = markdownToNotionBlocks(contentMarkdown) as typeof children;
+  }
+
+  const parent =
+    parentType === "database"
+      ? ({ database_id: parentId } as const)
+      : ({ page_id: parentId } as const);
+
+  const res = await withRetry(() =>
+    client.pages.create({
+      parent,
+      properties: {
+        title: { title: [{ text: { content: title } }] },
+      },
+      ...(children ? { children } : {}),
+    })
+  );
+
+  if (!("properties" in res)) {
+    throw new Error("Unexpected partial response from pages.create");
+  }
+  return res as PageObjectResponse;
+}
