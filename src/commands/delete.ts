@@ -1,6 +1,8 @@
 import { Command } from "commander";
 import { fetchPageRaw, toNotaPage } from "../api/pages";
 import { archivePage } from "../api/blocks";
+import { archiveDatabase, toNotaDatabase } from "../api/databases";
+import { getClient } from "../api/client";
 import { invalidatePage } from "../cache/store";
 
 interface DeleteOptions {
@@ -18,20 +20,47 @@ async function confirm(prompt: string): Promise<boolean> {
   });
 }
 
+type TargetKind =
+  | { kind: "page"; title: string; url: string }
+  | { kind: "database"; title: string; url: string };
+
+/** Resolve whether the ID is a page or a database, return display info. */
+async function resolveTarget(id: string): Promise<TargetKind> {
+  // Try page first
+  try {
+    const raw = await fetchPageRaw(id);
+    const page = toNotaPage(raw);
+    return { kind: "page", title: page.title, url: page.url };
+  } catch {
+    // not a page
+  }
+  // Try data source (database)
+  const client = getClient();
+  try {
+    const raw = await client.dataSources.retrieve({ data_source_id: id });
+    const db = toNotaDatabase(raw);
+    return { kind: "database", title: db.title, url: db.url };
+  } catch {
+    // not a database either
+  }
+  throw new Error(
+    `Could not find a page or database with id: ${id}\n` +
+    "Make sure the integration has access to it."
+  );
+}
+
 export function registerDeleteCommand(program: Command): void {
   program
-    .command("delete <page-id>")
-    .description("Archive (soft-delete) a Notion page")
+    .command("delete <id>")
+    .description("Archive (soft-delete) a Notion page or database")
     .option("--force", "Skip confirmation prompt")
-    .action(async (pageId: string, options: DeleteOptions) => {
+    .action(async (id: string, options: DeleteOptions) => {
       try {
-        // Fetch page info to show a human-readable name in the prompt
-        const rawPage = await fetchPageRaw(pageId);
-        const page = toNotaPage(rawPage);
+        const target = await resolveTarget(id);
 
         if (!options.force) {
           const ok = await confirm(
-            `Archive "${page.title}" (${page.id})?\n  ${page.url}\nProceed?`
+            `Archive ${target.kind} "${target.title}" (${id})?\n  ${target.url}\nProceed?`
           );
           if (!ok) {
             console.log("Cancelled.");
@@ -39,14 +68,26 @@ export function registerDeleteCommand(program: Command): void {
           }
         }
 
-        await archivePage(pageId);
-        invalidatePage(pageId);
+        if (target.kind === "page") {
+          await archivePage(id);
+          invalidatePage(id);
+        } else {
+          await archiveDatabase(id);
+        }
 
-        console.log(`Archived: "${page.title}" (${page.id})`);
+        console.log(`Archived: "${target.title}" (${id})`);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(`Error: ${message}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Examples:
+  nota delete <page-id>       # archive a page (with confirmation)
+  nota delete <database-id>   # archive a database (with confirmation)
+  nota delete <id> --force    # skip confirmation prompt`
+    );
 }

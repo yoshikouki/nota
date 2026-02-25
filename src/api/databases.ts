@@ -209,3 +209,11 @@ export async function queryDatabasePages(
   const raw = await queryDatabase(dataSourceId, options);
   return raw.map(toNotaPage);
 }
+
+/** Archive (soft-delete) a database by its data_source_id. */
+export async function archiveDatabase(dataSourceId: string): Promise<void> {
+  const client = getClient();
+  await withRetry(() =>
+    client.dataSources.update({ data_source_id: dataSourceId, archived: true })
+  );
+}
