@@ -163,5 +163,21 @@ export function registerEditCommand(program: Command): void {
         console.error(`Error: ${message}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Examples:
+  # Open current content in \$EDITOR, save on exit to replace
+  nota edit <page-id> --editor
+
+  # Replace entire content via stdin (pipe a Markdown file)
+  cat updated.md | nota edit <page-id>
+
+  # Append to existing content instead of replacing
+  cat addendum.md | nota edit <page-id> --append
+
+  # Update only the title
+  nota edit <page-id> --title "New title"`
+    );
 }

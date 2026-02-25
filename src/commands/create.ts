@@ -61,5 +61,27 @@ export function registerCreateCommand(program: Command): void {
           process.exit(1);
         }
       }
+    )
+    .addHelpText(
+      "after",
+      `
+Examples:
+  # Find database / page IDs first
+  nota db list
+  nota list --json | jq '.[].id'
+
+  # Create a page in a database
+  nota create "Meeting notes" --parent <database-id>
+
+  # Create with inline Markdown content
+  nota create "Quick note" --parent <id> --content "## Summary\n\nKey points here."
+
+  # Pipe a Markdown file as the initial content
+  cat draft.md | nota create "My post" --parent <id>
+
+  # Set a default parent so --parent can be omitted
+  nota config set create.parent <id>
+  nota config set create.parentType database
+  nota create "New page"`
     );
 }

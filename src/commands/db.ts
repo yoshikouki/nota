@@ -220,6 +220,31 @@ export function registerDbCommand(program: Command): void {
       }
     );
 
+  db.addHelpText(
+    "after",
+    `
+Examples:
+  # Discover accessible databases
+  nota db list
+
+  # Inspect schema before querying (shows property names and types)
+  nota db schema <database-id>
+
+  # Query all rows
+  nota db query <database-id>
+
+  # Filter rows using Notion filter JSON
+  nota db query <database-id> --filter '{"property":"Status","select":{"equals":"Done"}}'
+
+  # Sort rows
+  nota db query <database-id> --sort "Date:descending"
+
+  # Typical workflow: list → schema → query
+  nota db list
+  nota db schema <id>
+  nota db query <id> --limit 10 --json | jq '.[].title'`
+  );
+
   // ── nota db templates ───────────────────────────────────────────────────────
   db.command("templates <database-id>")
     .description("List page templates available in a database")

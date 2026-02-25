@@ -99,5 +99,16 @@ export function registerListCommand(program: Command): void {
         console.error(`Error: ${message}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Examples:
+  nota list                             # list all pages (sorted by last edited)
+  nota list --search "meeting"          # search by keyword
+  nota list --database <id>             # pages in a specific database
+  nota list --sort none                 # no sort (faster)
+  nota list --json | jq '.[].id'        # extract page IDs for scripting
+  nota list --cache                     # serve from local cache (offline-capable)`
+    );
 }

@@ -20,7 +20,25 @@ const program = new Command();
 program
   .name("nota")
   .description("A CLI tool for Notion")
-  .version("0.1.0");
+  .version("0.1.0")
+  .addHelpText(
+    "after",
+    `
+Setup:
+  export NOTION_TOKEN=secret_xxxx   # required — find in Notion → Settings → Connections
+
+Quick start:
+  nota db list                                 # discover database IDs
+  nota list                                    # list all accessible pages
+  nota create "My note" --parent <db-id>       # create a page in a database
+  nota show <page-id>                          # read page content as Markdown
+  cat draft.md | nota edit <page-id>           # replace page content from file
+  nota delete <page-id>                        # archive (soft-delete) a page
+
+Pipe-friendly — all commands accept --json for scripting:
+  nota list --json | jq '.[].id'
+  nota db query <db-id> --json | jq '.[].title'`
+  );
 
 registerListCommand(program);
 registerShowCommand(program);

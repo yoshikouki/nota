@@ -75,5 +75,15 @@ export function registerShowCommand(program: Command): void {
         console.error(`Error: ${message}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Examples:
+  nota show <page-id>                   # render as Markdown
+  nota show <page-id> --cache           # serve from local cache (offline)
+  nota show <page-id> --raw             # raw blocks JSON (for debugging)
+  nota show <page-id> | grep "TODO"     # pipe to other tools
+  nota show <page-id> | nota edit <id>  # copy content between pages`
+    );
 }
