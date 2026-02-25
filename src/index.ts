@@ -14,6 +14,7 @@ import { registerDeleteCommand } from "./commands/delete";
 import { registerCacheCommand } from "./commands/cache";
 import { registerConfigCommand } from "./commands/config";
 import { registerStatsCommand } from "./commands/stats";
+import { registerDoctorCommand } from "./commands/doctor";
 
 const program = new Command();
 
@@ -51,6 +52,7 @@ registerMoveCommand(program);
 registerPropsCommand(program);
 registerDeleteCommand(program);
 registerStatsCommand(program);
+registerDoctorCommand(program);
 registerCacheCommand(program);
 registerConfigCommand(program);
 
