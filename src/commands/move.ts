@@ -6,13 +6,26 @@ export function registerMoveCommand(program: Command): void {
     .command("move <page-id>")
     .description("Move a page to a different parent")
     .requiredOption("--parent <id>", "New parent page or database ID")
+    .option(
+      "--parent-type <type>",
+      "Parent type: page or database (skips auto-detection)"
+    )
     .option("--json", "Output moved page as JSON")
     .action(
-      async (pageId: string, options: { parent: string; json?: boolean }) => {
+      async (
+        pageId: string,
+        options: { parent: string; parentType?: string; json?: boolean }
+      ) => {
         try {
-          process.stderr.write("Detecting parent type…\r");
-          const parentType = await detectParentType(options.parent);
-          process.stderr.write("                      \r");
+          let parentType: "page" | "database";
+
+          if (options.parentType === "page" || options.parentType === "database") {
+            parentType = options.parentType;
+          } else {
+            process.stderr.write("Detecting parent type… (use --parent-type to skip)\r");
+            parentType = await detectParentType(options.parent);
+            process.stderr.write("                                                    \r");
+          }
 
           process.stderr.write(`Moving page to ${parentType}: ${options.parent}…\r`);
           const res = await movePage(pageId, options.parent, parentType);
@@ -31,5 +44,20 @@ export function registerMoveCommand(program: Command): void {
           process.exit(1);
         }
       }
+    )
+    .addHelpText(
+      "after",
+      `
+Examples:
+  # Find page and parent IDs first
+  nota list --json | jq '.[] | {id, title}'
+  nota db list --json | jq '.[] | {id, title}'
+
+  # Move a page (auto-detects parent type via API)
+  nota move <page-id> --parent <new-parent-id>
+
+  # Skip auto-detection with --parent-type (faster, AI-agent friendly)
+  nota move <page-id> --parent <data_source_id> --parent-type database
+  nota move <page-id> --parent <page-id>        --parent-type page`
     );
 }

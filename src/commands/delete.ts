@@ -54,8 +54,12 @@ async function resolveTarget(id: string): Promise<TargetKind> {
     // not a legacy database either
   }
   throw new Error(
-    `Could not find a page or database with id: ${id}\n` +
-    "Make sure the integration has access to it."
+    `Could not find a page or database with id: ${id}\n\n` +
+    "Make sure the integration has access to it, then find the correct ID:\n" +
+    "  nota list --json | jq '.[] | {id, title}'   # page IDs\n" +
+    "  nota db list --json | jq '.[] | {id, title}' # database IDs\n\n" +
+    "Note: Notion URL IDs are database_ids, not data_source_ids.\n" +
+    "  nota db sources <database_id>  # resolve URL ID → data_source_id"
   );
 }
 

@@ -8,12 +8,16 @@ export function registerCreateCommand(program: Command): void {
     .command("create <title>")
     .description("Create a new Notion page")
     .option("--parent <id>", "Parent page or database ID (overrides config)")
+    .option(
+      "--parent-type <type>",
+      "Parent type: page or database (skips auto-detection)"
+    )
     .option("--content <markdown>", "Initial page content as Markdown text")
     .option("--json", "Output created page as JSON")
     .action(
       async (
         title: string,
-        options: { parent?: string; content?: string; json?: boolean }
+        options: { parent?: string; parentType?: string; content?: string; json?: boolean }
       ) => {
         try {
           const config = loadConfig();
@@ -24,18 +28,28 @@ export function registerCreateCommand(program: Command): void {
             console.error(
               "Error: No parent specified.\n" +
               "  Pass --parent <id>, or set a default:\n" +
-              "    nota config set create.parent <page-or-database-id>"
+              "    nota config set create.parent <page-or-database-id>\n\n" +
+              "  Find IDs with:\n" +
+              "    nota db list              # databases\n" +
+              "    nota list --json | jq '.[].id'  # pages"
             );
             process.exit(1);
           }
 
-          // Resolve parent type: stored config > auto-detect
-          let parentType = config.create?.parentType;
-          if (!parentType || options.parent) {
-            // Always auto-detect when --parent flag is used (may differ from config)
-            process.stderr.write("Detecting parent type…\r");
+          // Resolve parent type: CLI flag > stored config > auto-detect
+          let parentType: "page" | "database" | undefined =
+            options.parentType === "page" || options.parentType === "database"
+              ? options.parentType
+              : undefined;
+
+          if (!parentType) {
+            parentType = options.parent ? undefined : config.create?.parentType;
+          }
+
+          if (!parentType) {
+            process.stderr.write("Detecting parent type… (use --parent-type to skip)\r");
             parentType = await detectParentType(parentId);
-            process.stderr.write("                      \r");
+            process.stderr.write("                                                    \r");
           }
 
           // Resolve content: flag > stdin pipe > none
@@ -70,8 +84,12 @@ Examples:
   nota db list
   nota list --json | jq '.[].id'
 
-  # Create a page in a database
+  # Create a page in a database (auto-detects parent type via API)
   nota create "Meeting notes" --parent <database-id>
+
+  # Skip auto-detection with --parent-type (faster, AI-agent friendly)
+  nota create "Meeting notes" --parent <data_source_id> --parent-type database
+  nota create "Sub page" --parent <page-id> --parent-type page
 
   # Create with inline Markdown content
   nota create "Quick note" --parent <id> --content "## Summary\n\nKey points here."
