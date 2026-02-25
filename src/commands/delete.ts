@@ -34,14 +34,24 @@ async function resolveTarget(id: string): Promise<TargetKind> {
   } catch {
     // not a page
   }
-  // Try data source (database)
   const client = getClient();
+  // Try data source (SDK v5 connected databases)
   try {
     const raw = await client.dataSources.retrieve({ data_source_id: id });
     const db = toNotaDatabase(raw);
     return { kind: "database", title: db.title, url: db.url };
   } catch {
-    // not a database either
+    // not a data source
+  }
+  // Try legacy database (created via databases.create — object:"database" format)
+  try {
+    const raw = await client.databases.retrieve({ database_id: id });
+    const titleArr = (raw as unknown as { title?: Array<{ plain_text: string }> }).title ?? [];
+    const title = titleArr.map((t) => t.plain_text).join("") || "(Untitled)";
+    const url = (raw as unknown as { url?: string }).url ?? "";
+    return { kind: "database", title, url };
+  } catch {
+    // not a legacy database either
   }
   throw new Error(
     `Could not find a page or database with id: ${id}\n` +

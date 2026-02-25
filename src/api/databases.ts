@@ -210,10 +210,19 @@ export async function queryDatabasePages(
   return raw.map(toNotaPage);
 }
 
-/** Archive (soft-delete) a database by its data_source_id. */
-export async function archiveDatabase(dataSourceId: string): Promise<void> {
+/** Archive (soft-delete) a database.
+ *  Tries dataSources.update first (SDK v5), falls back to databases.update
+ *  for legacy databases created via databases.create (object:"database"). */
+export async function archiveDatabase(id: string): Promise<void> {
   const client = getClient();
-  await withRetry(() =>
-    client.dataSources.update({ data_source_id: dataSourceId, archived: true })
-  );
+  try {
+    await withRetry(() =>
+      client.dataSources.update({ data_source_id: id, archived: true })
+    );
+  } catch {
+    // Fall back to legacy database update
+    await withRetry(() =>
+      client.databases.update({ database_id: id, archived: true })
+    );
+  }
 }
