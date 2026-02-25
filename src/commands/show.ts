@@ -79,6 +79,13 @@ export function registerShowCommand(program: Command): void {
     .addHelpText(
       "after",
       `
+Environment:
+  NOTION_TOKEN=secret_xxxx  Required. See \`nota --help\` Setup section for details.
+
+Getting page-id:
+  Run \`nota list\` to see page IDs (3rd column), or:
+    nota list --json | jq '.[] | {id, title}'
+
 Examples:
   nota show <page-id>                   # render as Markdown
   nota show <page-id> --cache           # serve from local cache (offline)

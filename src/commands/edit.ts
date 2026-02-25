@@ -167,6 +167,13 @@ export function registerEditCommand(program: Command): void {
     .addHelpText(
       "after",
       `
+Environment:
+  NOTION_TOKEN=secret_xxxx  Required. See \`nota --help\` Setup section for details.
+
+Getting page-id:
+  Run \`nota list\` to see page IDs (3rd column), or:
+    nota list --json | jq '.[] | {id, title}'
+
 Examples:
   # Open current content in \$EDITOR, save on exit to replace
   nota edit <page-id> --editor

@@ -143,7 +143,30 @@ function unsetConfigValue(config: NotaConfig, key: string): NotaConfig {
 }
 
 export function registerConfigCommand(program: Command): void {
-  const configCommand = program.command("config").description("Manage config");
+  const configCommand = program
+    .command("config")
+    .description("Manage config")
+    .addHelpText(
+      "after",
+      `
+Supported keys:
+  cache.enabled      boolean   Enable cache by default (true/false)
+  cache.ttl          number    Cache TTL in seconds (positive integer)
+  list.sort          string    Default sort for \`nota list\`: edited | none
+  list.database      string    Default database ID filter for \`nota list\`
+  create.parent      string    Default parent page or database ID for \`nota create\`
+  create.parentType  string    Parent type: page | database
+
+Examples:
+  nota config show                            # print current config as JSON
+  nota config set cache.enabled true          # enable cache globally
+  nota config set cache.ttl 300               # set TTL to 5 minutes
+  nota config set list.sort edited            # default sort by last edited
+  nota config set list.database <db-id>       # always filter by this database
+  nota config set create.parent <page-id>     # default parent for new pages
+  nota config set create.parentType page
+  nota config unset cache.enabled             # remove setting (revert to default)`
+    );
 
   configCommand
     .command("show")
@@ -166,7 +189,13 @@ export function registerConfigCommand(program: Command): void {
         console.error(`Error: ${message}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Examples:
+  nota config show   # print config file path and all current settings as JSON`
+    );
 
   configCommand
     .command("set <key> <value>")
@@ -185,7 +214,26 @@ export function registerConfigCommand(program: Command): void {
         console.error(`Error: ${message}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Supported keys and accepted values:
+  cache.enabled      true | false
+  cache.ttl          positive integer (seconds)
+  list.sort          edited | none
+  list.database      <database-id> (string)
+  create.parent      <page-id or database-id> (string)
+  create.parentType  page | database
+
+Examples:
+  nota config set cache.enabled true
+  nota config set cache.ttl 300
+  nota config set list.sort edited
+  nota config set list.database <database-id>
+  nota config set create.parent <page-id>
+  nota config set create.parentType page`
+    );
 
   configCommand
     .command("unset <key>")
@@ -201,5 +249,16 @@ export function registerConfigCommand(program: Command): void {
         console.error(`Error: ${message}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Supported keys:
+  cache.enabled  cache.ttl  list.sort  list.database
+  create.parent  create.parentType
+
+Examples:
+  nota config unset cache.enabled   # remove setting (revert to default)
+  nota config unset list.database   # stop filtering by a specific database`
+    );
 }

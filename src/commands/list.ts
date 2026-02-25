@@ -103,10 +103,17 @@ export function registerListCommand(program: Command): void {
     .addHelpText(
       "after",
       `
+Environment:
+  NOTION_TOKEN=secret_xxxx  Required. See \`nota --help\` Setup section for details.
+
+Getting IDs:
+  Page IDs are printed by \`nota list\` (3rd column) or extracted via --json:
+    nota list --json | jq '.[].id'
+
 Examples:
   nota list                             # list all pages (sorted by last edited)
   nota list --search "meeting"          # search by keyword
-  nota list --database <id>             # pages in a specific database
+  nota list --database <database-id>    # pages in a specific database
   nota list --sort none                 # no sort (faster)
   nota list --json | jq '.[].id'        # extract page IDs for scripting
   nota list --cache                     # serve from local cache (offline-capable)`

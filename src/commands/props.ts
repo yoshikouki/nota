@@ -2,7 +2,22 @@ import { Command } from "commander";
 import { fetchPageRaw, getPageProperty, toNotaPage } from "../api/pages";
 
 export function registerPropsCommand(program: Command): void {
-  const props = program.command("props").description("Page property operations");
+  const props = program
+    .command("props")
+    .description("Page property operations")
+    .addHelpText(
+      "after",
+      `
+Getting page-id:
+  nota list --json | jq '.[] | {id, title}'
+
+Getting property-id:
+  nota props list <page-id>   # shows property IDs and types
+
+Examples:
+  nota props list <page-id>                     # list all properties with IDs
+  nota props get  <page-id> <property-id>       # retrieve property value as JSON`
+    );
 
   // ── nota props list <page-id> ──────────────────────────────────────────────
   props
@@ -31,7 +46,16 @@ export function registerPropsCommand(program: Command): void {
         console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Getting page-id:
+  nota list --json | jq '.[] | {id, title}'
+
+Examples:
+  nota props list <page-id>   # shows property name, type, and property-id`
+    );
 
   // ── nota props get <page-id> <property-id> ────────────────────────────────
   props
@@ -47,5 +71,18 @@ export function registerPropsCommand(program: Command): void {
         console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Getting page-id:
+  nota list --json | jq '.[] | {id, title}'
+
+Getting property-id:
+  nota props list <page-id>   # shows property IDs in "id=<property-id>" column
+
+Examples:
+  nota props get <page-id> <property-id>        # retrieve property value as JSON
+  nota props get <page-id> <property-id> | jq . # pretty-print value`
+    );
 }

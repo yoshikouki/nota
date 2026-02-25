@@ -129,7 +129,20 @@ export function registerDbCommand(program: Command): void {
         console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Getting database-id:
+  Run \`nota db list\` to see database IDs (2nd column).
+  Note: Notion URL IDs are database_ids. If schema returns an error, resolve
+  to data_source_id first via \`nota db sources <database-id>\`.
+
+Examples:
+  nota db schema <database-id>          # show property names and types
+  nota db schema <database-id> --json   # raw JSON schema (for scripting)
+  nota db schema <data_source_id>       # also works with data_source_id`
+    );
 
   // ── nota db query ───────────────────────────────────────────────────────────
   db.command("query <database-id>")
@@ -196,6 +209,25 @@ export function registerDbCommand(program: Command): void {
           process.exit(1);
         }
       }
+    )
+    .addHelpText(
+      "after",
+      `
+Getting database-id:
+  Run \`nota db list\` to see database IDs.
+  Notion URL IDs are database_ids. If query fails, resolve to data_source_id:
+    nota db sources <database-id>   # find data_source_ids
+    nota db query   <data_source_id>
+
+Examples:
+  nota db query <database-id>                         # all rows
+  nota db query <database-id> --limit 10              # first 10 rows
+  nota db query <database-id> --json                  # output as JSON
+  nota db query <database-id> --sort "last_edited_time:desc"
+  nota db query <database-id> --filter '{"property":"Status","select":{"equals":"Done"}}'
+
+  # AI-agent workflow: pipe IDs for further processing
+  nota db query <database-id> --json | jq '.[].id'`
     );
 
   // ── nota db update ──────────────────────────────────────────────────────────
@@ -250,6 +282,17 @@ export function registerDbCommand(program: Command): void {
           process.exit(1);
         }
       }
+    )
+    .addHelpText(
+      "after",
+      `
+Getting database-id:
+  Run \`nota db list\` to see database IDs (2nd column).
+
+Examples:
+  nota db update <database-id> --title "New name"
+  nota db update <database-id> --schema '{"Status":{"select":{}}}'
+  nota db update <database-id> --title "New" --schema '{"Done":{"checkbox":{}}}' --json`
     );
 
   // ── nota db sources ─────────────────────────────────────────────────────────
@@ -281,7 +324,28 @@ export function registerDbCommand(program: Command): void {
         console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Background:
+  Notion API 2025-09-03 introduced data_source_id (different from database_id).
+  Notion URL IDs are database_ids; \`nota db query/schema\` may require data_source_id.
+  Use this command to bridge between database_id (from URL) and data_source_id.
+
+Getting database-id:
+  From the Notion page URL: https://notion.so/<workspace>/<database-id>?v=...
+  Or: nota db list --json | jq '.[].id'
+
+Examples:
+  nota db sources <database-id>         # list data_source_ids for a database
+  nota db sources <database-id> --json  # JSON output for scripting
+
+  # Typical workflow:
+  nota db sources <database-id>         # get data_source_id
+  nota db schema  <data_source_id>      # inspect schema
+  nota db query   <data_source_id>      # query rows`
+    );
 
   db.addHelpText(
     "after",
@@ -336,5 +400,15 @@ Examples:
         console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Getting database-id:
+  Run \`nota db list\` to see database IDs (2nd column).
+
+Examples:
+  nota db templates <database-id>         # list templates (name + id)
+  nota db templates <database-id> --json  # JSON output for scripting`
+    );
 }

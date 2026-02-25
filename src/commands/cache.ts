@@ -25,7 +25,17 @@ function countFilesAndSize(dir: string): { count: number; size: number } {
 }
 
 export function registerCacheCommand(program: Command): void {
-  const cacheCommand = program.command("cache").description("Manage cache");
+  const cacheCommand = program
+    .command("cache")
+    .description("Manage cache")
+    .addHelpText(
+      "after",
+      `
+Examples:
+  nota cache status                  # show cache location and file counts
+  nota cache clear                   # clear ALL cache (pages, blocks, searches)
+  nota cache clear --page <page-id>  # clear cache for a specific page only`
+    );
 
   cacheCommand
     .command("status")
@@ -51,13 +61,19 @@ export function registerCacheCommand(program: Command): void {
         console.error(`Error: ${message}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Examples:
+  nota cache status   # print cache directory path and file counts per type`
+    );
 
   cacheCommand
     .command("clear")
-    .description("Clear cache entries")
-    .option("--all", "Clear all cache files")
-    .option("--page <id>", "Clear cache for a page and its blocks")
+    .description("Clear cache entries (defaults to clearing ALL cache if no option given)")
+    .option("--all", "Clear all cache files (pages, blocks, searches)")
+    .option("--page <id>", "Clear cache for a specific page and its blocks only")
     .action((options: ClearOptions) => {
       try {
         if (options.all && options.page) {
@@ -70,11 +86,27 @@ export function registerCacheCommand(program: Command): void {
           return;
         }
 
+        // Default: clear all cache (same as --all)
         clearAllCache();
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(`Error: ${message}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Default behavior:
+  Running \`nota cache clear\` with no options clears ALL cache (pages, blocks, searches).
+  Use --page to limit clearing to a single page.
+
+Getting page-id for --page:
+  nota list --json | jq '.[] | {id, title}'
+
+Examples:
+  nota cache clear                      # clear ALL cache (pages + blocks + searches)
+  nota cache clear --all                # same as above (explicit)
+  nota cache clear --page <page-id>     # invalidate cache for one page only`
+    );
 }

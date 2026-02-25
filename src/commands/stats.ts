@@ -67,6 +67,15 @@ export function registerStatsCommand(program: Command): void {
     .command("stats")
     .description("Show Notion API status, cache stats, and page analytics")
     .option("--no-api", "Skip Notion API connectivity check")
+    .addHelpText(
+      "after",
+      `
+Examples:
+  nota stats          # full report: API connectivity, cache stats, page analytics
+  nota stats --no-api # skip API check (faster, works offline)
+
+Tip: Run \`nota list\` first to populate the cache for page analytics.`
+    )
     .action(async (options: { api: boolean }) => {
       // ── 1. API status ────────────────────────────────────────────────
       console.log("Notion API");

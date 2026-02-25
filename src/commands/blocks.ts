@@ -41,7 +41,25 @@ function blockPreview(block: BlockObjectResponse): string {
 // ── register ──────────────────────────────────────────────────────────────────
 
 export function registerBlocksCommand(program: Command): void {
-  const blocks = program.command("blocks").description("Block-level operations");
+  const blocks = program
+    .command("blocks")
+    .description("Block-level operations")
+    .addHelpText(
+      "after",
+      `
+Getting page-id:
+  nota list --json | jq '.[] | {id, title}'
+
+Getting block-id:
+  nota blocks list <page-id>   # shows block IDs (3rd column)
+
+Subcommands:
+  nota blocks list <page-id>                  # list top-level blocks
+  nota blocks get  <block-id>                 # retrieve block JSON
+  nota blocks append <page-id> --content "…" # append Markdown blocks
+  nota blocks update <block-id> --content "…" # update block text
+  nota blocks delete <block-id>               # delete block (permanent)`
+    );
 
   // ── nota blocks list ────────────────────────────────────────────────────────
   blocks
@@ -72,7 +90,18 @@ export function registerBlocksCommand(program: Command): void {
         console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Getting page-id:
+  nota list --json | jq '.[] | {id, title}'
+
+Examples:
+  nota blocks list <page-id>            # list blocks (shows block-ids)
+  nota blocks list <page-id> --json     # raw JSON for scripting
+  nota blocks list <page-id> --json | jq '.[].id'  # extract block IDs`
+    );
 
   // ── nota blocks get ─────────────────────────────────────────────────────────
   blocks
@@ -86,7 +115,17 @@ export function registerBlocksCommand(program: Command): void {
         console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Getting block-id:
+  nota blocks list <page-id>   # shows block IDs (3rd column)
+
+Examples:
+  nota blocks get <block-id>            # retrieve full block JSON
+  nota blocks get <block-id> | jq '.type'  # extract block type`
+    );
 
   // ── nota blocks delete ──────────────────────────────────────────────────────
   blocks
@@ -121,7 +160,17 @@ export function registerBlocksCommand(program: Command): void {
         console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Getting block-id:
+  nota blocks list <page-id>   # shows block IDs (3rd column)
+
+Examples:
+  nota blocks delete <block-id>          # interactive confirmation
+  nota blocks delete <block-id> --force  # skip confirmation (for scripting)`
+    );
 
   // ── nota blocks update ──────────────────────────────────────────────────────
   blocks
@@ -156,6 +205,17 @@ export function registerBlocksCommand(program: Command): void {
           process.exit(1);
         }
       }
+    )
+    .addHelpText(
+      "after",
+      `
+Getting block-id:
+  nota blocks list <page-id>   # shows block IDs (3rd column)
+
+Examples:
+  nota blocks update <block-id> --content "new text"
+  echo "new text" | nota blocks update <block-id>
+  nota blocks update <block-id> --content "edited" --json  # return updated block`
     );
 
   // ── nota blocks append ──────────────────────────────────────────────────────
@@ -190,5 +250,16 @@ export function registerBlocksCommand(program: Command): void {
         console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
         process.exit(1);
       }
-    });
+    })
+    .addHelpText(
+      "after",
+      `
+Getting page-id:
+  nota list --json | jq '.[] | {id, title}'
+
+Examples:
+  nota blocks append <page-id> --content "# New Section"
+  cat file.md | nota blocks append <page-id>
+  echo "- item 1\n- item 2" | nota blocks append <page-id>`
+    );
 }
