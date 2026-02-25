@@ -41,8 +41,7 @@ nota config unset <key>
 ## Install
 
 ```bash
-brew tap yoshikouki/tap
-brew install nota
+brew install yoshikouki/tap/nota
 ```
 
 Then set your Notion API token:
@@ -167,7 +166,7 @@ TTL: 5 minutes for pages/blocks, 1 minute for searches. Pass `--cache` to serve 
 
 **Read features:** done  
 **Write features:** done (`nota create`, `nota edit`, `nota delete`, `nota blocks list/get/update/delete/append`)  
-**Brew distribution:** done (`brew tap yoshikouki/tap && brew install nota`)
+**Brew distribution:** done (`brew install yoshikouki/tap/nota`)
 
 ---
 
