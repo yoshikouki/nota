@@ -210,6 +210,27 @@ export async function queryDatabasePages(
   return raw.map(toNotaPage);
 }
 
+export interface DataSourceRef {
+  id: string;
+  name: string;
+}
+
+/**
+ * Resolve a database_id to its child data_source_id(s).
+ *
+ * Notion API 2025-09-03: a "database" (container) can have multiple
+ * data_sources. Use this to bridge database_id (from URL) → data_source_id
+ * (required by query/schema APIs).
+ */
+export async function getDataSources(databaseId: string): Promise<DataSourceRef[]> {
+  const client = getClient();
+  const res = await withRetry(() =>
+    client.databases.retrieve({ database_id: databaseId })
+  );
+  const raw = res as unknown as { data_sources?: Array<{ id: string; name: string }> };
+  return (raw.data_sources ?? []).map((ds) => ({ id: ds.id, name: ds.name }));
+}
+
 /** Archive (soft-delete) a database.
  *  Tries dataSources.update first (SDK v5), falls back to databases.update
  *  for legacy databases created via databases.create (object:"database"). */

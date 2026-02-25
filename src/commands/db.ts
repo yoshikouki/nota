@@ -1,7 +1,9 @@
 import { Command } from "commander";
 import {
   type QueryFilter,
+  type DataSourceRef,
   getDatabaseSchema,
+  getDataSources,
   listTemplates,
   queryDatabase,
   searchDatabases,
@@ -30,6 +32,34 @@ function parseSort(raw: string): SortEntry {
     return { timestamp: field, direction };
   }
   return { property: field ?? raw, direction };
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * When a data_source_id operation fails with object_not_found, check whether
+ * the ID is actually a database_id (container). If so, print actionable hints
+ * for AI agents and users who copied the ID from a Notion URL.
+ *
+ * Notion API 2025-09-03: database_id ≠ data_source_id.
+ * URL IDs are database_ids; nota db query/schema require data_source_ids.
+ */
+async function hintIfDatabaseId(id: string): Promise<void> {
+  try {
+    const sources = await getDataSources(id);
+    if (sources.length === 0) return;
+    console.error(`\n"${id}" is a database_id (Notion container), not a data_source_id.`);
+    console.error(`nota db query and schema require a data_source_id.\n`);
+    console.error(`Data sources for this database:`);
+    for (const s of sources) {
+      console.error(`  ${s.id}  ${s.name}`);
+    }
+    console.error(`\nRun: nota db sources ${id}  # to see this list`);
+    console.error(`Then: nota db query <data_source_id>`);
+    process.exit(1);
+  } catch {
+    // Not a database_id either — let the original error propagate
+  }
 }
 
 // ── register ──────────────────────────────────────────────────────────────────
@@ -95,6 +125,7 @@ export function registerDbCommand(program: Command): void {
         console.log(`\nFilter example:`);
         console.log(`  nota db query ${schema.id} --filter '{"property":"<name>","<type>":{"equals":"<value>"}}'`);
       } catch (err: unknown) {
+        await hintIfDatabaseId(databaseId);
         console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
         process.exit(1);
       }
@@ -160,6 +191,7 @@ export function registerDbCommand(program: Command): void {
           }
           console.log(`\n  ${rows.length} row(s)`);
         } catch (err: unknown) {
+          await hintIfDatabaseId(databaseId);
           console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
           process.exit(1);
         }
@@ -220,6 +252,37 @@ export function registerDbCommand(program: Command): void {
       }
     );
 
+  // ── nota db sources ─────────────────────────────────────────────────────────
+  db.command("sources <database-id>")
+    .description(
+      "List data_source_id(s) for a database_id (Notion URL ID → data_source_id)"
+    )
+    .option("--json", "Output as JSON")
+    .action(async (databaseId: string, options: { json?: boolean }) => {
+      try {
+        const sources = await getDataSources(databaseId);
+        if (options.json) {
+          console.log(JSON.stringify(sources, null, 2));
+          return;
+        }
+        if (sources.length === 0) {
+          console.log(`No data sources found for database ${databaseId}.`);
+          console.log("(This database may not be accessible via the dataSources API.)");
+          return;
+        }
+        console.log(`Data sources for database ${databaseId}:\n`);
+        for (const s of sources as DataSourceRef[]) {
+          console.log(`  ${s.id}  ${s.name}`);
+        }
+        console.log(`\nUse the data_source_id above with:`);
+        console.log(`  nota db schema <data_source_id>`);
+        console.log(`  nota db query  <data_source_id>`);
+      } catch (err: unknown) {
+        console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+        process.exit(1);
+      }
+    });
+
   db.addHelpText(
     "after",
     `
@@ -239,10 +302,13 @@ Examples:
   # Sort rows
   nota db query <database-id> --sort "Date:descending"
 
-  # Typical workflow: list → schema → query
-  nota db list
-  nota db schema <id>
-  nota db query <id> --limit 10 --json | jq '.[].title'`
+  # Notion URL IDs are database_ids — resolve to data_source_id first
+  nota db sources <database_id>            # list data_source_ids
+  nota db schema  <data_source_id>         # inspect schema
+  nota db query   <data_source_id>         # query rows
+
+  # Typical AI-agent workflow
+  nota db list --json | jq '.[0].id' | xargs nota db query`
   );
 
   // ── nota db templates ───────────────────────────────────────────────────────
