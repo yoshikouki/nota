@@ -4,6 +4,7 @@ import { archivePage } from "../api/blocks";
 import { archiveDatabase, toNotaDatabase } from "../api/databases";
 import { getClient } from "../api/client";
 import { invalidatePage } from "../cache/store";
+import { parseNotionUrl } from "../utils/parseNotionUrl";
 
 interface DeleteOptions {
   force?: boolean;
@@ -70,6 +71,7 @@ export function registerDeleteCommand(program: Command): void {
     .option("--force", "Skip confirmation prompt")
     .action(async (id: string, options: DeleteOptions) => {
       try {
+        id = parseNotionUrl(id);
         const target = await resolveTarget(id);
 
         if (!options.force) {

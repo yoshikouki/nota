@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { fetchPageRaw, getPageProperty, toNotaPage } from "../api/pages";
+import { parseNotionUrl } from "../utils/parseNotionUrl";
 
 export function registerPropsCommand(program: Command): void {
   const props = program
@@ -25,6 +26,7 @@ Examples:
     .description("List all properties of a page")
     .action(async (pageId: string) => {
       try {
+        pageId = parseNotionUrl(pageId);
         const raw = await fetchPageRaw(pageId);
         const page = toNotaPage(raw);
         console.log(`Page: ${page.title} (${page.id})`);
@@ -65,6 +67,7 @@ Examples:
     )
     .action(async (pageId: string, propertyId: string) => {
       try {
+        pageId = parseNotionUrl(pageId);
         const value = await getPageProperty(pageId, propertyId);
         console.log(JSON.stringify(value, null, 2));
       } catch (err: unknown) {

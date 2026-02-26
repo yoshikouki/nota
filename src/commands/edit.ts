@@ -8,6 +8,7 @@ import { updatePageTitle, clearPageBlocks, appendBlocks } from "../api/blocks";
 import { markdownToNotionBlocks } from "../render/markdown";
 import { invalidatePage } from "../cache/store";
 import { isStdinPiped, readStdin } from "../utils/stdin";
+import { parseNotionUrl } from "../utils/parseNotionUrl";
 
 interface EditOptions {
   title?: string;
@@ -40,6 +41,7 @@ export function registerEditCommand(program: Command): void {
     .option("--append", "Append piped content instead of replacing")
     .action(async (pageId: string, options: EditOptions) => {
       try {
+        pageId = parseNotionUrl(pageId);
         const stdinPiped = isStdinPiped();
 
         if (!options.title && !options.editor && !stdinPiped) {

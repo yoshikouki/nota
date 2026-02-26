@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { detectParentType, movePage, toNotaPage } from "../api/pages";
+import { parseNotionUrl } from "../utils/parseNotionUrl";
 
 export function registerMoveCommand(program: Command): void {
   program
@@ -17,6 +18,7 @@ export function registerMoveCommand(program: Command): void {
         options: { parent: string; parentType?: string; json?: boolean }
       ) => {
         try {
+          pageId = parseNotionUrl(pageId);
           let parentType: "page" | "database";
 
           if (options.parentType === "page" || options.parentType === "database") {

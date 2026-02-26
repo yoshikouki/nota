@@ -15,6 +15,7 @@ import {
   setCachedPage,
 } from "../cache/store";
 import { loadConfig } from "../utils/config-file";
+import { parseNotionUrl } from "../utils/parseNotionUrl";
 
 interface ShowOptions {
   cache?: boolean;
@@ -29,6 +30,7 @@ export function registerShowCommand(program: Command): void {
     .option("--raw", "Output raw blocks JSON")
     .action(async (pageId: string, options: ShowOptions, command: Command) => {
       try {
+        pageId = parseNotionUrl(pageId);
         const config = loadConfig();
         const cacheSource = command.getOptionValueSource("cache");
         const allowStale =

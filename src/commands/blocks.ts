@@ -9,6 +9,7 @@ import {
 } from "../api/blocks";
 import { markdownToNotionBlocks } from "../render/markdown";
 import { isStdinPiped, readStdin } from "../utils/stdin";
+import { parseNotionUrl } from "../utils/parseNotionUrl";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,7 @@ Subcommands:
     .option("--json", "Output as JSON array")
     .action(async (pageId: string, options: { json?: boolean }) => {
       try {
+        pageId = parseNotionUrl(pageId);
         const list = await fetchTopLevelBlocks(pageId);
         if (options.json) {
           console.log(JSON.stringify(list, null, 2));
@@ -225,6 +227,7 @@ Examples:
     .option("--content <markdown>", "Markdown text to append")
     .action(async (pageId: string, options: { content?: string }) => {
       try {
+        pageId = parseNotionUrl(pageId);
         let markdown = options.content;
         if (!markdown && isStdinPiped()) {
           markdown = (await readStdin()).trimEnd();
