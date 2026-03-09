@@ -3,9 +3,8 @@ import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { fetchPageRaw, toNotaPage } from "../api/pages";
-import { fetchPageMarkdown } from "../api/content";
-import { updatePageTitle, clearPageBlocks, appendBlocks } from "../api/blocks";
-import { markdownToNotionBlocks } from "../render/markdown";
+import { getClient } from "../api/client";
+import { updatePageTitle } from "../api/blocks";
 import { invalidatePage } from "../cache/store";
 import { isStdinPiped, readStdin } from "../utils/stdin";
 import { parseNotionUrl } from "../utils/parseNotionUrl";
@@ -27,6 +26,20 @@ function openEditor(filePath: string): void {
   if (proc.exitCode !== 0) {
     throw new Error(`Editor exited with code ${proc.exitCode}`);
   }
+}
+
+/**
+ * Build an ellipsis-based content_range that covers the full markdown content.
+ * Used with replace_content_range to replace the entire page content.
+ *
+ * Format: "firstLine...lastLine" (or just "singleLine" for single-line content)
+ */
+function buildFullContentRange(markdown: string): string {
+  const lines = markdown.trimEnd().split("\n");
+  const firstLine = lines[0] ?? "";
+  const lastLine = lines[lines.length - 1] ?? "";
+  if (firstLine === lastLine) return firstLine;
+  return `${firstLine}...${lastLine}`;
 }
 
 export function registerEditCommand(program: Command): void {
@@ -55,6 +68,8 @@ export function registerEditCommand(program: Command): void {
           process.exit(1);
         }
 
+        const client = getClient();
+
         // ── stdin pipe flow ────────────────────────────────────────────
         if (stdinPiped && !options.editor) {
           const markdown = await readStdin();
@@ -63,19 +78,39 @@ export function registerEditCommand(program: Command): void {
             process.exit(1);
           }
 
-          const blocks = markdownToNotionBlocks(markdown.trimEnd());
-          if (blocks.length === 0) {
-            console.error("Error: could not parse any blocks from stdin.");
-            process.exit(1);
-          }
-
           if (options.append) {
-            process.stderr.write(`Appending ${blocks.length} blocks…\n`);
-            await appendBlocks(pageId, blocks);
+            // Append to end of page using insert_content without `after`
+            process.stderr.write(`Appending content…\n`);
+            await client.pages.updateMarkdown({
+              page_id: pageId,
+              type: "insert_content",
+              insert_content: { content: markdown.trimEnd() },
+            });
           } else {
-            process.stderr.write(`Replacing content (${blocks.length} blocks)…\n`);
-            await clearPageBlocks(pageId);
-            await appendBlocks(pageId, blocks);
+            // Replace entire page content
+            process.stderr.write(`Replacing content…\n`);
+            const current = await client.pages.retrieveMarkdown({ page_id: pageId });
+            const currentTrimmed = current.markdown.trim();
+
+            if (!currentTrimmed) {
+              // Empty page: use insert_content
+              await client.pages.updateMarkdown({
+                page_id: pageId,
+                type: "insert_content",
+                insert_content: { content: markdown.trimEnd() },
+              });
+            } else {
+              // Non-empty page: replace full content range
+              await client.pages.updateMarkdown({
+                page_id: pageId,
+                type: "replace_content_range",
+                replace_content_range: {
+                  content: markdown.trimEnd(),
+                  content_range: buildFullContentRange(currentTrimmed),
+                  allow_deleting_content: true,
+                },
+              });
+            }
           }
           invalidatePage(pageId);
           console.log(`Page updated.`);
@@ -98,8 +133,9 @@ export function registerEditCommand(program: Command): void {
           const rawPage = await fetchPageRaw(pageId);
           const page = toNotaPage(rawPage);
 
-          // Get current markdown
-          const { markdown: currentMarkdown } = await fetchPageMarkdown(pageId);
+          // Get current markdown via Markdown Content API
+          const response = await client.pages.retrieveMarkdown({ page_id: pageId });
+          const currentMarkdown = response.markdown;
 
           // Write to temp file
           const tmpDir = tmpdir();
@@ -134,19 +170,29 @@ export function registerEditCommand(program: Command): void {
               process.exit(1);
             }
 
-            // Convert Markdown → Notion blocks
-            const blocks = markdownToNotionBlocks(editorBody);
-            if (blocks.length === 0) {
-              console.error("Error: could not parse any blocks from the edited content.");
-              process.exit(1);
-            }
+            // Replace page content via Markdown Content API
+            process.stderr.write(`Replacing content…\n`);
+            const currentTrimmed = originalBody.trim();
 
-            // Replace page content
-            process.stderr.write(
-              `Replacing content (${blocks.length} blocks)…\n`
-            );
-            await clearPageBlocks(pageId);
-            await appendBlocks(pageId, blocks);
+            if (!currentTrimmed) {
+              // Empty page: use insert_content
+              await client.pages.updateMarkdown({
+                page_id: pageId,
+                type: "insert_content",
+                insert_content: { content: editorBody },
+              });
+            } else {
+              // Non-empty page: replace full content range
+              await client.pages.updateMarkdown({
+                page_id: pageId,
+                type: "replace_content_range",
+                replace_content_range: {
+                  content: editorBody,
+                  content_range: buildFullContentRange(currentTrimmed),
+                  allow_deleting_content: true,
+                },
+              });
+            }
 
             // Invalidate cache so next `nota show` re-fetches
             invalidatePage(pageId);

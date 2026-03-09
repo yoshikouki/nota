@@ -1,14 +1,13 @@
 /**
- * High-level helpers that combine block fetching + Markdown rendering.
- * Used by both `nota show` and `nota edit`.
+ * Low-level block fetching helpers.
+ * Used by `nota show --raw` (blocks JSON output).
  */
 import type { Client } from "@notionhq/client";
 import type {
   BlockObjectResponse,
   ListBlockChildrenResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-import { NotionToMarkdown } from "notion-to-md";
-import { getClient, withRetry } from "./client";
+import { withRetry } from "./client";
 
 type NotionListBlock = ListBlockChildrenResponse["results"][number];
 
@@ -104,55 +103,4 @@ export function hydrateBlocks(
   }
 
   return { rootBlocks, blockChildrenMap };
-}
-
-/**
- * Create a notion-to-md client that reads from a pre-fetched in-memory map
- * instead of making real API calls.
- */
-export function createPrefetchedClient(
-  blockChildrenMap: Map<string, BlockObjectResponse[]>
-): Client {
-  return {
-    blocks: {
-      children: {
-        list: async ({
-          block_id,
-        }: {
-          block_id: string;
-          start_cursor?: string;
-        }) =>
-          ({
-            object: "list",
-            type: "block",
-            block: {},
-            next_cursor: null,
-            has_more: false,
-            results: blockChildrenMap.get(block_id) ?? [],
-          }) as ListBlockChildrenResponse,
-      },
-    },
-  } as unknown as Client;
-}
-
-/**
- * Fetch all blocks for a page and return them as a Markdown string.
- * Re-fetches from API; does NOT use cache (let the caller handle caching).
- */
-export async function fetchPageMarkdown(pageId: string): Promise<{
-  markdown: string;
-  flatBlocks: BlockObjectResponse[];
-}> {
-  const client = getClient();
-  const blockChildrenMap = new Map<string, BlockObjectResponse[]>();
-  const rootBlocks = await fetchAllBlocks(client, pageId, blockChildrenMap);
-  const flatBlocks = flattenBlocks(rootBlocks, blockChildrenMap);
-
-  const n2m = new NotionToMarkdown({
-    notionClient: createPrefetchedClient(blockChildrenMap),
-  });
-  const mdBlocks = await n2m.blocksToMarkdown(rootBlocks);
-  const markdown = n2m.toMarkdownString(mdBlocks).parent ?? "";
-
-  return { markdown: markdown.trimEnd(), flatBlocks };
 }

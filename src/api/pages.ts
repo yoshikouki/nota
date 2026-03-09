@@ -213,23 +213,18 @@ export async function createPage(
 ): Promise<PageObjectResponse> {
   const client = getClient();
 
-  // Build blocks from markdown if provided
-  let children: Parameters<typeof client.pages.create>[0]["children"];
-  if (contentMarkdown) {
-    const { markdownToNotionBlocks } = await import("../render/markdown");
-    children = markdownToNotionBlocks(contentMarkdown) as typeof children;
-  }
-
   const pageParent =
     parentType === "page" ? ({ page_id: parentId } as const) : null;
 
+  // Build create args: use `markdown` param if content is provided (Markdown Content API),
+  // otherwise use properties only.
   const createArgs = (parent: Parameters<typeof client.pages.create>[0]["parent"]) =>
     client.pages.create({
       parent,
       properties: {
         title: { title: [{ text: { content: title } }] },
       },
-      ...(children ? { children } : {}),
+      ...(contentMarkdown ? { markdown: contentMarkdown } as unknown as object : {}),
     });
 
   let res: Awaited<ReturnType<typeof client.pages.create>>;

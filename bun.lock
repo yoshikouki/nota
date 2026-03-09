@@ -5,21 +5,19 @@
     "": {
       "name": "nota",
       "dependencies": {
-        "@notionhq/client": "^5.9.0",
+        "@notionhq/client": "^5.11.1",
         "@tryfabric/martian": "^1.2.4",
         "commander": "^14.0.3",
         "notion-to-md": "^3.1.9",
       },
       "devDependencies": {
         "@types/bun": "latest",
-      },
-      "peerDependencies": {
         "typescript": "^5",
       },
     },
   },
   "packages": {
-    "@notionhq/client": ["@notionhq/client@5.9.0", "", {}, "sha512-TvAVMfwtVv61hsPrRfB9ehgzSjX6DaAi1ZRAnpg8xFjzaXhzhEfbO0PhBRm3ecSv1azDuO2kBuyQHh2/z7G4YQ=="],
+    "@notionhq/client": ["@notionhq/client@5.11.1", "", {}, "sha512-393XUAb4706eWKQx1xxg/tdn/rTY6+qj3PxTGyTr03D7ydO6e7B7tYyidxJCbKzNSSCVTUAth/bLoKNhm0VoUQ=="],
 
     "@tryfabric/martian": ["@tryfabric/martian@1.2.4", "", { "dependencies": { "@notionhq/client": "^1.0.4", "remark-gfm": "^1.0.0", "remark-math": "^4.0.0", "remark-parse": "^9.0.0", "unified": "^9.2.1" } }, "sha512-g7SP7beaxrjxLnW//vskra07a1jsJowqp07KMouxh4gCwaF+ItHbRZN8O+1dhJivBi3VdasT71BPyk+8wzEreQ=="],
 
