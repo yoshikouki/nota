@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
+import { homedir } from "os";
 
 export interface NotaConfig {
   cache?: {
@@ -18,7 +19,7 @@ export interface NotaConfig {
 
 function getConfigDir(): string {
   const xdgConfig = process.env.XDG_CONFIG_HOME;
-  const base = xdgConfig || join(process.env.HOME || "~", ".config");
+  const base = xdgConfig || join(process.env.HOME || homedir(), ".config");
   return join(base, "nota");
 }
 
