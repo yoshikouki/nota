@@ -109,10 +109,10 @@ function deleteFile(filePath: string): void {
   }
 }
 
-// Search hash: base64url(JSON.stringify({query, sort})) truncated to 32 chars
+// Search hash: Bun.hash for collision-resistant, fixed-length keys
 function searchHash(query: string | undefined, sort: string): string {
   const payload = JSON.stringify({ query, sort });
-  return Buffer.from(payload).toString("base64url").slice(0, 32);
+  return Bun.hash(payload).toString(36);
 }
 
 export function getCachedPage(
