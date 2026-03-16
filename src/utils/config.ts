@@ -2,7 +2,7 @@ export interface Config {
   notionToken: string;
 }
 
-export function loadConfig(): Config {
+export function loadEnvConfig(): Config {
   const notionToken = process.env.NOTION_TOKEN;
   if (!notionToken) {
     throw new Error(

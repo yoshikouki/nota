@@ -6,7 +6,7 @@ import { toNotaPage } from "../api/pages";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { getBlocksDir, getCacheDir, getPagesDir, getSearchesDir } from "../utils/xdg";
 import { readFileSync } from "fs";
-import { loadConfig } from "../utils/config";
+import { loadEnvConfig } from "../utils/config";
 import { maskToken } from "../utils/format";
 
 interface DirStats {
@@ -81,7 +81,7 @@ Tip: Run \`nota list\` first to populate the cache for page analytics.`
       // ── 1. API status ────────────────────────────────────────────────
       console.log("Notion API");
       try {
-        const { notionToken } = loadConfig();
+        const { notionToken } = loadEnvConfig();
         const tokenHint = maskToken(notionToken);
         process.stdout.write(`  ${pad("Token:")}${tokenHint}\n`);
 

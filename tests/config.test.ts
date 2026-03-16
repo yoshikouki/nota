@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { loadConfig } from "../src/utils/config";
+import { loadEnvConfig } from "../src/utils/config";
 
 const ORIGINAL_TOKEN = process.env.NOTION_TOKEN;
 
@@ -21,7 +21,7 @@ describe("loadConfig", () => {
     }) as typeof process.exit;
 
     try {
-      expect(() => loadConfig()).toThrow(
+      expect(() => loadEnvConfig()).toThrow(
         "NOTION_TOKEN is not set. Export it or add to ~/.zshenv.local"
       );
     } finally {
@@ -31,6 +31,6 @@ describe("loadConfig", () => {
 
   test("NOTION_TOKEN が設定済みなら設定を返す", () => {
     process.env.NOTION_TOKEN = "secret-token";
-    expect(loadConfig()).toEqual({ notionToken: "secret-token" });
+    expect(loadEnvConfig()).toEqual({ notionToken: "secret-token" });
   });
 });

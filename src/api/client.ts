@@ -1,12 +1,12 @@
 import { Client } from "@notionhq/client";
 import { NOTION_MAX_RETRIES } from "../constants";
-import { loadConfig } from "../utils/config";
+import { loadEnvConfig } from "../utils/config";
 
 let _client: Client | null = null;
 
 export function getClient(): Client {
   if (!_client) {
-    const { notionToken } = loadConfig();
+    const { notionToken } = loadEnvConfig();
     _client = new Client({ auth: notionToken });
   }
   return _client;
