@@ -3,6 +3,7 @@ import { fetchPageRaw, toNotaPage } from "../api/pages";
 import { archivePage } from "../api/blocks";
 import { archiveDatabase, toNotaDatabase } from "../api/databases";
 import { getClient } from "../api/client";
+import type { DataSourceObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { invalidatePage } from "../cache/store";
 import { parseNotionUrl } from "../utils/parseNotionUrl";
 
@@ -39,7 +40,10 @@ async function resolveTarget(id: string): Promise<TargetKind> {
   // Try data source (SDK v5 connected databases)
   try {
     const raw = await client.dataSources.retrieve({ data_source_id: id });
-    const db = toNotaDatabase(raw);
+    if (!("properties" in raw)) {
+      throw new Error(`Received partial response for data source: ${id}`);
+    }
+    const db = toNotaDatabase(raw as DataSourceObjectResponse);
     return { kind: "database", title: db.title, url: db.url };
   } catch {
     // not a data source

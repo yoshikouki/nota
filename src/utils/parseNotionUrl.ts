@@ -46,13 +46,13 @@ export function parseNotionUrl(input: string): string {
 
     // Match trailing 32-char hex (optionally preceded by a title and hyphen)
     const match = lastSegment.match(/([0-9a-f]{32})$/i);
-    if (match) {
+    if (match?.[1]) {
       return hexToUuid(match[1]);
     }
 
     // Match UUID format in last segment
     const uuidMatch = lastSegment.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);
-    if (uuidMatch) {
+    if (uuidMatch?.[1]) {
       return uuidMatch[1].toLowerCase();
     }
 
