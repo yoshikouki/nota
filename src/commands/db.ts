@@ -12,6 +12,10 @@ import {
 } from "../api/databases";
 import { toNotaPage } from "../api/pages";
 
+// ── table column widths ──────────────────────────────────────────────────────
+const DATE_WIDTH = 10;
+const ID_WIDTH = 36;
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(d: Date): string {
@@ -82,12 +86,10 @@ export function registerDbCommand(program: Command): void {
           console.log("No databases found.");
           return;
         }
-        const dateWidth = 10;
-        const idWidth = 36;
         for (const db of dbs) {
           const d = toNotaDatabase(db);
-          const date = formatDate(d.lastEditedAt).padEnd(dateWidth);
-          const id = d.id.padEnd(idWidth);
+          const date = formatDate(d.lastEditedAt).padEnd(DATE_WIDTH);
+          const id = d.id.padEnd(ID_WIDTH);
           const props = `(${d.propertyCount} props)`.padStart(12);
           console.log(`  ${date}  ${id}  ${props}  ${d.title}`);
         }
@@ -195,11 +197,9 @@ Examples:
           }
 
           const pages = rows.map(toNotaPage);
-          const dateWidth = 10;
-          const idWidth = 36;
           for (const p of pages) {
-            const date = formatDate(p.lastEditedAt).padEnd(dateWidth);
-            const id = p.id.padEnd(idWidth);
+            const date = formatDate(p.lastEditedAt).padEnd(DATE_WIDTH);
+            const id = p.id.padEnd(ID_WIDTH);
             console.log(`  ${date}  ${id}  ${p.title}`);
           }
           console.log(`\n  ${rows.length} row(s)`);
