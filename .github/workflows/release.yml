@@ -22,6 +22,12 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun test
+
       - name: Build binaries
         run: |
           mkdir -p dist
@@ -74,52 +80,52 @@ jobs:
           cd tap
 
           cat > Formula/nota.rb << FORMULA
-          class Nota < Formula
-            desc "Notion CLI — read, write, and cache your Notion pages"
-            homepage "https://github.com/yoshikouki/nota"
-            version "${VERSION#v}"
-            license "MIT"
+class Nota < Formula
+  desc "Notion CLI — read, write, and cache your Notion pages"
+  homepage "https://github.com/yoshikouki/nota"
+  version "${VERSION#v}"
+  license "MIT"
 
-            on_macos do
-              on_arm do
-                url "https://github.com/yoshikouki/nota/releases/download/${VERSION}/nota-darwin-arm64.tar.gz"
-                sha256 "${SHA_DARWIN_ARM64}"
-              end
-              on_intel do
-                url "https://github.com/yoshikouki/nota/releases/download/${VERSION}/nota-darwin-x64.tar.gz"
-                sha256 "${SHA_DARWIN_X64}"
-              end
-            end
+  on_macos do
+    on_arm do
+      url "https://github.com/yoshikouki/nota/releases/download/${VERSION}/nota-darwin-arm64.tar.gz"
+      sha256 "${SHA_DARWIN_ARM64}"
+    end
+    on_intel do
+      url "https://github.com/yoshikouki/nota/releases/download/${VERSION}/nota-darwin-x64.tar.gz"
+      sha256 "${SHA_DARWIN_X64}"
+    end
+  end
 
-            on_linux do
-              on_arm do
-                url "https://github.com/yoshikouki/nota/releases/download/${VERSION}/nota-linux-arm64.tar.gz"
-                sha256 "${SHA_LINUX_ARM64}"
-              end
-              on_intel do
-                url "https://github.com/yoshikouki/nota/releases/download/${VERSION}/nota-linux-x64.tar.gz"
-                sha256 "${SHA_LINUX_X64}"
-              end
-            end
+  on_linux do
+    on_arm do
+      url "https://github.com/yoshikouki/nota/releases/download/${VERSION}/nota-linux-arm64.tar.gz"
+      sha256 "${SHA_LINUX_ARM64}"
+    end
+    on_intel do
+      url "https://github.com/yoshikouki/nota/releases/download/${VERSION}/nota-linux-x64.tar.gz"
+      sha256 "${SHA_LINUX_X64}"
+    end
+  end
 
-            def install
-              bin.install "nota"
-            end
+  def install
+    bin.install "nota"
+  end
 
-            def caveats
-              <<~EOS
-                nota requires a Notion API token:
-                  export NOTION_TOKEN="secret_..."
+  def caveats
+    <<~EOS
+      nota requires a Notion API token:
+        export NOTION_TOKEN="secret_..."
 
-                Get a token at: https://www.notion.so/my-integrations
-              EOS
-            end
+      Get a token at: https://www.notion.so/my-integrations
+    EOS
+  end
 
-            test do
-              assert_match version.to_s, shell_output("\#{bin}/nota --version")
-            end
-          end
-          FORMULA
+  test do
+    assert_match version.to_s, shell_output("\#{bin}/nota --version")
+  end
+end
+FORMULA
 
           git add Formula/nota.rb
           git commit -m "nota: update to ${VERSION}"
