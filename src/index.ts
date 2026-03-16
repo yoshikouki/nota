@@ -21,7 +21,7 @@ const program = new Command();
 program
   .name("nota")
   .description("A CLI tool for Notion")
-  .version("0.1.0")
+  .version(require("../package.json").version)
   .addHelpText(
     "after",
     `
