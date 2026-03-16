@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { getClient, withRetry } from "../api/client";
 import { searchDatabases } from "../api/databases";
 import { loadConfig } from "../utils/config";
+import { maskToken } from "../utils/format";
 import { loadConfig as loadNotaConfig } from "../utils/config-file";
 import { getPagesDir } from "../utils/xdg";
 import { readdirSync } from "fs";
@@ -36,7 +37,7 @@ function countCachedPages(): number {
 function checkToken(): CheckResult {
   try {
     const { notionToken } = loadConfig();
-    const hint = `${notionToken.slice(0, 10)}…${notionToken.slice(-4)}`;
+    const hint = maskToken(notionToken);
     return { name: "NOTION_TOKEN", status: "pass", value: `set (${hint})`, hints: [] };
   } catch {
     return {
