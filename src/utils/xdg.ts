@@ -10,10 +10,6 @@ export function getCacheDir(): string {
   return dir;
 }
 
-export function getCachePath(): string {
-  return join(getCacheDir(), "cache.json");
-}
-
 export function getPagesDir(): string {
   const dir = join(getCacheDir(), "pages");
   mkdirSync(dir, { recursive: true });
