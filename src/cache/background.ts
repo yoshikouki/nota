@@ -13,11 +13,14 @@ function isDebugMode(): boolean {
   return (process.env.DEBUG ?? "").includes("nota");
 }
 
+/** Track pending background promises so we can drain them before exit. */
+const pending = new Set<Promise<void>>();
+
 function runBackgroundRefresh(
   query: string | undefined,
   sort: SortOrder
 ): void {
-  void (async () => {
+  const p = (async () => {
     try {
       const pages = await searchPagesRaw(query, sort);
 
@@ -38,6 +41,9 @@ function runBackgroundRefresh(
       console.error(`nota: background cache revalidate failed: ${message}`);
     }
   })();
+
+  pending.add(p);
+  void p.finally(() => pending.delete(p));
 }
 
 /**
@@ -60,3 +66,15 @@ export function revalidateSearchInBackground(
 
   void Promise.resolve().then(() => runBackgroundRefresh(query, sort));
 }
+
+/** Wait for all pending background refreshes to complete. */
+export function drainBackgroundRefreshes(): Promise<void> {
+  return Promise.all(pending).then(() => {});
+}
+
+// Drain before the process exits so writes aren't lost.
+process.on("beforeExit", () => {
+  if (pending.size > 0) {
+    void drainBackgroundRefreshes();
+  }
+});
