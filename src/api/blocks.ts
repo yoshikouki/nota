@@ -2,6 +2,7 @@ import type {
   BlockObjectRequest,
   BlockObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import { NOTION_MAX_PAGE_SIZE, NOTION_BATCH_SIZE } from "../constants";
 import { getClient, withRetry } from "./client";
 
 /** Retrieve a single block by ID. */
@@ -83,7 +84,7 @@ export async function fetchTopLevelBlocks(
       client.blocks.children.list({
         block_id: blockId,
         start_cursor: nextCursor,
-        page_size: 100,
+        page_size: NOTION_MAX_PAGE_SIZE,
       })
     );
     for (const b of res.results) {
@@ -132,10 +133,9 @@ export async function appendBlocks(
   if (children.length === 0) return;
   const client = getClient();
 
-  // Chunk into 100-item batches
-  const BATCH = 100;
-  for (let i = 0; i < children.length; i += BATCH) {
-    const chunk = children.slice(i, i + BATCH);
+  // Chunk into batches (max children per Notion append request)
+  for (let i = 0; i < children.length; i += NOTION_BATCH_SIZE) {
+    const chunk = children.slice(i, i + NOTION_BATCH_SIZE);
     await withRetry(() =>
       client.blocks.children.append({
         block_id: blockId,

@@ -9,6 +9,7 @@
  * ID は DataSourceObjectResponse.id (= data_source_id) を使う。
  */
 
+import { NOTION_MAX_PAGE_SIZE } from "../constants";
 import { getClient, withRetry } from "./client";
 import { toNotaPage } from "./pages";
 import type { NotaPage } from "../types";
@@ -107,8 +108,8 @@ export async function queryDatabase(
 
   do {
     const batchSize = options.limit
-      ? Math.min(options.limit - pages.length, 100)
-      : 100;
+      ? Math.min(options.limit - pages.length, NOTION_MAX_PAGE_SIZE)
+      : NOTION_MAX_PAGE_SIZE;
 
     const res = await withRetry(() =>
       client.dataSources.query({

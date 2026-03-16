@@ -1,4 +1,5 @@
 import { Client } from "@notionhq/client";
+import { NOTION_MAX_RETRIES } from "../constants";
 import { loadConfig } from "../utils/config";
 
 let _client: Client | null = null;
@@ -16,7 +17,7 @@ export function getClient(): Client {
  */
 export async function withRetry<T>(
   fn: () => Promise<T>,
-  maxRetries = 3
+  maxRetries = NOTION_MAX_RETRIES
 ): Promise<T> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {

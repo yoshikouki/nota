@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import type { BlockObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import { PREVIEW_LENGTH } from "../constants";
 import {
   fetchTopLevelBlocks,
   retrieveBlock,
@@ -29,12 +30,12 @@ function blockPreview(block: BlockObjectResponse): string {
         return typeof textObj?.["content"] === "string" ? textObj["content"] : "";
       })
       .join("")
-      .slice(0, 60);
+      .slice(0, PREVIEW_LENGTH);
   }
 
   // title-based (child_page, child_database)
   const title = inner["title"];
-  if (typeof title === "string") return title.slice(0, 60);
+  if (typeof title === "string") return title.slice(0, PREVIEW_LENGTH);
 
   return "";
 }
@@ -140,7 +141,7 @@ Examples:
           // Peek at the block to show what will be deleted
           const block = await retrieveBlock(blockId);
           const preview = blockPreview(block);
-          const label = preview ? `"${preview.slice(0, 50)}"` : `[${block.type}]`;
+          const label = preview ? `"${preview.slice(0, PREVIEW_LENGTH)}"` : `[${block.type}]`;
           process.stdout.write(`Delete block ${label} (${blockId})? [y/N] `);
 
           const { createInterface } = await import("node:readline");

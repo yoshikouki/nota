@@ -7,6 +7,7 @@ import type {
   BlockObjectResponse,
   ListBlockChildrenResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import { NOTION_MAX_PAGE_SIZE } from "../constants";
 import { withRetry } from "./client";
 
 type NotionListBlock = ListBlockChildrenResponse["results"][number];
@@ -34,7 +35,7 @@ export async function fetchAllBlocks(
       client.blocks.children.list({
         block_id: blockId,
         start_cursor: nextCursor,
-        page_size: 100,
+        page_size: NOTION_MAX_PAGE_SIZE,
       })
     );
 
