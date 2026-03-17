@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { toNotaPage } from "../src/api/pages";
+import { toNotaPage } from "../src/api/page-mapper";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 
 // Minimal PageObjectResponse factory — only fields toNotaPage() reads

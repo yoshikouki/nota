@@ -26,7 +26,6 @@ jobs:
         run: bun run typecheck
 
       - name: Test
-        continue-on-error: true  # TODO: fix @notionhq/client module loading on Linux+Bun
         run: bun test
 
       - name: Build binaries
