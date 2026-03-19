@@ -154,8 +154,8 @@ TTL: 5 minutes for pages/blocks, 1 minute for searches. Pass `--cache` to serve 
 
 - **Runtime:** Bun
 - **Language:** TypeScript
-- **Notion SDK:** [@notionhq/client](https://github.com/makenotion/notion-sdk-js)
-- **Markdown conversion:** [notion-to-md](https://github.com/souvikinator/notion-to-md) + [@tryfabric/martian](https://github.com/tryfabric/martian)
+- **Notion SDK:** [@notionhq/client](https://github.com/makenotion/notion-sdk-js) v5
+- **Markdown conversion:** Notion's [Markdown Content API](https://developers.notion.com/reference/retrieve-a-page#markdown-content) (blocks → Markdown) + [@tryfabric/martian](https://github.com/tryfabric/martian) (Markdown → blocks)
 - **CLI framework:** [commander](https://github.com/tj/commander.js)
 
 `commander` over `oclif` because `bun build --compile` produces a single self-contained binary and oclif's plugin machinery assumes Node. The goal is a brew-installable binary; the shortest path is the right one.
