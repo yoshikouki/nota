@@ -19,6 +19,6 @@
   "dependencies": {
     "@notionhq/client": "^5.13.0",
     "@tryfabric/martian": "^1.2.4",
-    "commander": "^14.0.3"
+    "commander": "^15.0.0"
   }
 }
