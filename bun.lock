@@ -5,7 +5,7 @@
     "": {
       "name": "nota",
       "dependencies": {
-        "@notionhq/client": "^5.13.0",
+        "@notionhq/client": "^5.30.0",
         "@tryfabric/martian": "^1.2.4",
         "commander": "^14.0.3",
       },
@@ -16,7 +16,7 @@
     },
   },
   "packages": {
-    "@notionhq/client": ["@notionhq/client@5.13.0", "", {}, "sha512-SWVaqYVNaecLzAAllups4vklxxomaFenEMEkoUs3ylvhK1KFTU5Jevgu9Uwm/TSdhsErV0ru5YHcLd3SNyPi6Q=="],
+    "@notionhq/client": ["@notionhq/client@5.30.0", "", {}, "sha512-SZpwkns/zScc7P7MA1LC144VT6AlKhy3NRAHa1rSxr/FVBGnmgMI2n81Y89X0UPgnKNSLyoEbzsod8KZsSGLSg=="],
 
     "@tryfabric/martian": ["@tryfabric/martian@1.2.4", "", { "dependencies": { "@notionhq/client": "^1.0.4", "remark-gfm": "^1.0.0", "remark-math": "^4.0.0", "remark-parse": "^9.0.0", "unified": "^9.2.1" } }, "sha512-g7SP7beaxrjxLnW//vskra07a1jsJowqp07KMouxh4gCwaF+ItHbRZN8O+1dhJivBi3VdasT71BPyk+8wzEreQ=="],
 
